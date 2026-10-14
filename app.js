@@ -349,7 +349,7 @@ function render() {
     <div class="app-shell">
       <aside class="sidebar">
         ${brand()}
-        <div class="side-event"><span>District tournament</span><strong>Silambam Match</strong><small>25 October 2026 · Tamil Nadu</small></div>
+        <div class="side-event"><span>District tournament</span><strong>Silambam Match</strong><small>24 October 2026 · Tamil Nadu</small></div>
         <div class="nav-label">Workspace</div>
         <nav class="side-nav">${visibleNav.map(item => navButton(item, activePage)).join('')}</nav>
         <div class="side-bottom">
@@ -360,7 +360,7 @@ function render() {
       <section class="main-area">
         <header class="topbar">
           <div class="breadcrumb-wrap"><button class="mobile-menu" data-action="mobile-menu" aria-label="Open navigation">☰</button><div class="breadcrumb">Vettai <span aria-hidden="true">/</span> <strong>${esc(title)}</strong></div></div>
-          <div class="top-actions"><span class="event-date">25 OCT 2026</span><span class="role-tag">${session.role}</span></div>
+          <div class="top-actions"><span class="event-date">24 OCT 2026</span><span class="role-tag">${session.role}</span></div>
         </header>
         <main class="content">${renderPage()}</main>
       </section>
@@ -384,7 +384,7 @@ function renderLogin() {
   if (authView === 'signup-success') return renderSignupSuccess();
 
   return `<div class="login-shell">
-    <section class="login-art">${brand()}<div class="art-copy"><p class="eyebrow">One district. One arena.</p><h1>Discipline meets the day.</h1><p>Registration, verification and pitch coordination for the district Silambam match.</p><div class="event-stamp">25 OCTOBER 2026</div></div><div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div></section>
+    <section class="login-art">${brand()}<div class="art-copy"><p class="eyebrow">One district. One arena.</p><h1>Discipline meets the day.</h1><p>Registration, verification and pitch coordination for the district Silambam match.</p><div class="event-stamp">24 OCTOBER 2026</div></div><div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div></section>
     <section class="login-main"><div class="login-panel"><p class="eyebrow">Match administration</p><h2>Welcome back</h2><p>Sign in to your tournament workspace.</p>
       <form id="login-form"><div class="field"><label for="login-id">Login ID</label><input id="login-id" name="loginId" autocomplete="username" placeholder="Email address" required></div><div class="field"><label for="login-password">Password</label><input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></div><div class="login-actions"><button class="btn btn-primary btn-wide" type="submit">Sign in <span aria-hidden="true">→</span></button><button class="btn btn-outline btn-inline" type="button" data-action="show-signup">Sign Up</button></div></form>
     </div></section>
@@ -399,7 +399,7 @@ function renderSignupSuccess() {
         <p class="eyebrow">One district. One arena.</p>
         <h1>Discipline meets the day.</h1>
         <p>Your academy registration is ready for verification.</p>
-        <div class="event-stamp">25 OCTOBER 2026</div>
+        <div class="event-stamp">24 OCTOBER 2026</div>
       </div>
       <div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div>
     </section>
@@ -441,7 +441,7 @@ function renderSignupSuccess() {
 
 function renderAcademySignup() {
   return `<div class="login-shell">
-    <section class="login-art">${brand()}<div class="art-copy"><p class="eyebrow">One district. One arena.</p><h1>Discipline meets the day.</h1><p>Register your academy to participate in the district Silambam match.</p><div class="event-stamp">25 OCTOBER 2026</div></div><div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div></section>
+    <section class="login-art">${brand()}<div class="art-copy"><p class="eyebrow">One district. One arena.</p><h1>Discipline meets the day.</h1><p>Register your academy to participate in the district Silambam match.</p><div class="event-stamp">24 OCTOBER 2026</div></div><div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div></section>
     <section class="login-main"><div class="login-panel signup-panel"><p class="eyebrow">Academy access</p><h2>ACADEMY REGISTRATION</h2><p>Create your institute account for tournament participation.</p>
       <form id="academy-signup-form" novalidate>
         <div class="field"><label for="signup-academy-name">Academy Name</label><input id="signup-academy-name" name="academyName" type="text" placeholder="Enter academy name" required><div class="validation-message" data-error-for="academyName"></div></div>
@@ -550,7 +550,7 @@ data.referees = Array.isArray(data.referees) ? data.referees : [];
   }).join('');
   const recent = data.students.slice().sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
   return `${pageHeading('Event control', 'District Silambam Match', 'A clear view of registrations and tournament readiness.', `<button class="btn ${data.registrationOpen ? 'btn-outline' : 'btn-primary'}" data-action="toggle-registration">${data.registrationOpen ? 'Close registration' : 'Reopen registration'}</button>`) }
-    <div class="banner"><div class="banner-copy"><span class="banner-symbol">${data.registrationOpen ? '◉' : 'Ⅱ'}</span><div><strong>Registration ${data.registrationOpen ? 'is open' : 'is closed'}</strong><small>${data.registrationOpen ? 'Institutes can add and update participant records.' : 'Institute changes are paused. Organiser access remains active.'}</small></div></div><span class="role-tag">25 OCT 2026</span></div>
+    <div class="banner"><div class="banner-copy"><span class="banner-symbol">${data.registrationOpen ? '◉' : 'Ⅱ'}</span><div><strong>Registration ${data.registrationOpen ? 'is open' : 'is closed'}</strong><small>${data.registrationOpen ? 'Institutes can add and update participant records.' : 'Institute changes are paused. Organiser access remains active.'}</small></div></div><span class="role-tag">24 OCT 2026</span></div>
     <section class="stat-grid">${statCard('Institutes', data.institutes.length, 'Academies in the district', '▦')}${statCard('Participants', stats.total, 'Registered entries', '◉')}${statCard('Individual', stats.individual, 'Registered entries', '◎')}${statCard('Referees', data.referees.length, 'Across all registered academies', '⌖')}</section>
     <div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>Latest registrations</h2><button class="btn btn-quiet" data-page="participants">Review participants →</button></div><div class="panel-body">${activityList(recent, true)}</div></section><section class="panel"><div class="panel-head"><h2>Category mix</h2><small>${stats.total} total</small></div><div class="panel-body"><div class="activity-list">${categorySummary}</div><div class="quick-links" style="margin-top:13px"><button class="quick-link" data-page="pitches"><span><strong>Pitch readiness</strong><small>All registered participants are available for pitch review</small></span><span class="quick-arrow">→</span></button><button class="quick-link" data-page="institutes"><span><strong>Institute directory</strong><small>${data.institutes.length} academy accounts</small></span><span class="quick-arrow">→</span></button></div></div></section></div>`;
 }
@@ -625,7 +625,7 @@ function renderReferees() {
   const body = list.map(referee => `<tr><td class="cell-primary">${esc(referee.name)}</td><td>${referee.age}</td><td>${esc(referee.academyName)}</td><td>${esc(referee.phone)}</td><td class="actions-cell"><button class="btn btn-quiet" data-action="view-referee" data-id="${referee.id}">View</button><button class="btn btn-quiet" data-action="edit-referee" data-id="${referee.id}" ${!organiser && !data.registrationOpen ? 'disabled' : ''}>Edit</button><button class="btn btn-quiet" data-action="delete-referee" data-id="${referee.id}" ${!organiser && !data.registrationOpen ? 'disabled' : ''}>Delete</button></td></tr>`).join('');
   const addButton = !organiser ? `<button class="btn btn-primary" data-action="add-referee" ${!data.registrationOpen ? 'disabled' : ''}>＋ Add referee</button>` : '';
   return `${pageHeading(organiser ? 'Event officials' : 'Academy officials', 'Referees', organiser ? 'Referee roster across all registered institutes.' : 'Manage referees representing your academy.', addButton)}
-    ${organiser ? `<div class="summary-row"><div class="mini-stat"><span>Total referees</span><strong>${list.length}</strong></div><div class="mini-stat"><span>Institutes represented</span><strong>${new Set(list.map(person => person.instituteId)).size}</strong></div><div class="mini-stat"><span>Match date</span><strong>25 Oct</strong></div></div>` : (!data.registrationOpen ? `<div class="note" style="margin-bottom:15px">Registration is closed. Referee records can no longer be changed by institutes.</div>` : '')}
+    ${organiser ? `<div class="summary-row"><div class="mini-stat"><span>Total referees</span><strong>${list.length}</strong></div><div class="mini-stat"><span>Institutes represented</span><strong>${new Set(list.map(person => person.instituteId)).size}</strong></div><div class="mini-stat"><span>Match date</span><strong>24 Oct</strong></div></div>` : (!data.registrationOpen ? `<div class="note" style="margin-bottom:15px">Registration is closed. Referee records can no longer be changed by institutes.</div>` : '')}
     <section class="panel"><div class="panel-head"><h2>Referee directory</h2><small>${list.length} records</small></div><div class="table-wrap"><table><thead><tr><th>Referee Name</th><th>Age</th><th>Academy Name</th><th>Phone</th><th>Actions</th></tr></thead><tbody>${body || `<tr><td colspan="5">${emptyState('No referees listed', 'Add a referee to your academy roster.')}</td></tr>`}</tbody></table></div></section>`;
 }
 

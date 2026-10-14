@@ -1,6 +1,6 @@
 // Shared pure utilities for VETTAI. No DOM or application state dependencies.
 export function esc(value = '') { return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
-export function ageAtMatch(dob, matchDate = '2026-10-25') {
+export function ageAtMatch(dob, matchDate = '2026-10-24') {
   if (!dob) return null;
   const birth = new Date(`${dob}T00:00:00`); const event = new Date(`${matchDate}T00:00:00`);
   if (Number.isNaN(birth.getTime())) return null;
