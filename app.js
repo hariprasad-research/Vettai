@@ -244,10 +244,13 @@ async function loadAllParticipantsFromSupabase() {
       email: academy.email
     };
 
-    if (!data.institutes.some(item => item.id === institute.id)) {
-      data.institutes.push(institute);
-    }
+  data.institutes = Array.isArray(data.institutes)
+  ? data.institutes
+  : [];
 
+if (!data.institutes.some(item => item.id === institute.id)) {
+  data.institutes.push(institute);
+}
     session = {
       role: 'INSTITUTE',
       instituteId: institute.id,
