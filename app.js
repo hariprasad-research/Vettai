@@ -10,7 +10,7 @@ import {
   deleteReferee as deleteRefereeFromSupabase
 } from './referees.js';
 
-const MATCH_DATE = '2026-10-25';
+const MATCH_DATE = '2026-10-24';
 const STORAGE_KEY = 'vettai-match-data-v1';
 const SESSION_KEY = 'vettai-match-session-v1';
 const { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } =
@@ -471,6 +471,11 @@ function renderDashboard() {
     <div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>Recent participants</h2><button class="btn btn-quiet" data-page="participants">View all →</button></div><div class="panel-body">${activityList(students.slice().sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4))}</div></section><section class="panel"><div class="panel-head"><h2>Quick actions</h2><small>Manage your entries</small></div><div class="panel-body"><div class="quick-links"><button class="quick-link" data-action="add-student" ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}><span><strong>Add a participant</strong><small>Register for the October match</small></span><span class="quick-arrow">＋</span></button><button class="quick-link" data-page="referees"><span><strong>Manage referees</strong><small>${instituteReferees(institute.id).length} referees on your roster</small></span><span class="quick-arrow">→</span></button></div>${!data.registrationOpen ? `<p class="note" style="margin:12px 0 0">Registration is closed. New registrations and edits are unavailable.</p>` : ''}</div></section></div>`;
 }
 function renderOrganiserDashboard() {
+
+data.institutes = Array.isArray(data.institutes) ? data.institutes : [];
+data.students = Array.isArray(data.students) ? data.students : [];
+data.referees = Array.isArray(data.referees) ? data.referees : [];
+
   const stats = allStats();
   const categorySummary = ['INDIVIDUAL', 'FIGHT'].map(category => {
     const count = data.students.filter(student => participantEvents(student).includes(category)).length;
