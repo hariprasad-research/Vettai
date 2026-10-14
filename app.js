@@ -335,6 +335,8 @@ function toast(message, error = false) {
   setTimeout(() => node.remove(), 3100);
 }
 
+
+
 function render() {
   const root = document.querySelector('#app');
   if (!session) { root.innerHTML = renderLogin(); return; }
@@ -380,12 +382,60 @@ function profileRow() {
 function renderLogin() {
   if (authView === 'signup') return renderAcademySignup();
   if (authView === 'signup-success') return renderSignupSuccess();
+
   return `<div class="login-shell">
     <section class="login-art">${brand()}<div class="art-copy"><p class="eyebrow">One district. One arena.</p><h1>Discipline meets the day.</h1><p>Registration, verification and pitch coordination for the district Silambam match.</p><div class="event-stamp">25 OCTOBER 2026</div></div><div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div></section>
     <section class="login-main"><div class="login-panel"><p class="eyebrow">Match administration</p><h2>Welcome back</h2><p>Sign in to your tournament workspace.</p>
       <form id="login-form"><div class="field"><label for="login-id">Login ID</label><input id="login-id" name="loginId" autocomplete="username" placeholder="Email address" required></div><div class="field"><label for="login-password">Password</label><input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></div><div class="login-actions"><button class="btn btn-primary btn-wide" type="submit">Sign in <span aria-hidden="true">→</span></button><button class="btn btn-outline btn-inline" type="button" data-action="show-signup">Sign Up</button></div></form>
-
     </div></section>
+  </div>`;
+}
+
+function renderSignupSuccess() {
+  return `<div class="login-shell">
+    <section class="login-art">
+      ${brand()}
+      <div class="art-copy">
+        <p class="eyebrow">One district. One arena.</p>
+        <h1>Discipline meets the day.</h1>
+        <p>Your academy registration is ready for verification.</p>
+        <div class="event-stamp">25 OCTOBER 2026</div>
+      </div>
+      <div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div>
+    </section>
+
+    <section class="login-main">
+      <div class="login-panel signup-panel">
+        <p class="eyebrow">One last step</p>
+        <h2>Check Your Email!</h2>
+
+        <p>
+          Your academy account has been created successfully.
+          We've sent a confirmation link to your registered email address.
+        </p>
+
+        <div class="notice">
+          <strong>What should you do next?</strong>
+          <p>1. Open your email inbox.</p>
+          <p>2. Check your Spam or Junk folder if you don't see our email.</p>
+          <p>3. Click the confirmation link in the email.</p>
+          <p>4. Return here and sign in to your VETTAI account.</p>
+        </div>
+
+        <p class="muted">
+          Didn't receive the email? Please check your email address
+          and try again later.
+        </p>
+
+        <button
+          class="btn btn-primary btn-wide"
+          type="button"
+          data-action="show-login"
+        >
+          Go to Login →
+        </button>
+      </div>
+    </section>
   </div>`;
 }
 
@@ -421,14 +471,6 @@ function renderAcademySignup() {
   </div>`;
 }
 
-function renderSignupSuccess() {
-  return `<div class="login-shell">
-    <section class="login-art">${brand()}<div class="art-copy"><p class="eyebrow">One district. One arena.</p><h1>Discipline meets the day.</h1><p>Your academy registration is ready for review and login access.</p><div class="event-stamp">25 OCTOBER 2026</div></div><div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div></section>
-    <section class="login-main"><div class="login-panel signup-panel"><p class="eyebrow">Account created</p><h2>Academy account created successfully.</h2><p>Check your email to confirm your account if requested. Then sign in using your email and the password you created.</p>
-      <button class="btn btn-primary btn-wide" type="button" data-action="show-login">Go to Login</button>
-    </div></section>
-  </div>`;
-}
 
 function clearFieldErrors(form) {
   form.querySelectorAll('.validation-message').forEach(node => { node.textContent = ''; });
