@@ -33,29 +33,7 @@ const NAV_ITEMS = [
 
 const seed = {
   registrationOpen: true,
-  institutes: [
-    { id: 'INS001', loginId: 'INS001', masterName: 'R. Kumar', academyName: 'Veera Silambam Academy', phone: '9876543210', createdAt: '2026-08-18' },
-    { id: 'INS002', loginId: 'INS002', masterName: 'Meena Raj', academyName: 'Maruthu Warriors', phone: '9840012345', createdAt: '2026-08-22' },
-    { id: 'INS003', loginId: 'INS003', masterName: 'S. Muthu', academyName: 'Thendral Martial Arts', phone: '9789012345', createdAt: '2026-09-02' },
-    { id: 'INS004', loginId: 'INS004', masterName: 'K. Selvam', academyName: 'Aathichudi Silambam', phone: '9894012345', createdAt: '2026-09-06' }
-  ],
-  students: [
-    { id: 'STU0001', instituteId: 'INS001', name: 'Arun Kumar', dob: '2014-06-10', category: 'INDIVIDUAL', createdAt: '2026-09-12' },
-    { id: 'STU0002', instituteId: 'INS001', name: 'Bala Murugan', dob: '2013-03-22', category: 'FIGHT', createdAt: '2026-09-19' },
-    { id: 'STU0003', instituteId: 'INS001', name: 'Nila Devi', dob: '2012-11-04', category: 'INDIVIDUAL', createdAt: '2026-09-23' },
-    { id: 'STU0004', instituteId: 'INS001', name: 'Kavin Raj', dob: '2016-08-14', category: 'FIGHT', createdAt: '2026-09-25' },
-    { id: 'STU0005', instituteId: 'INS002', name: 'Aadhi Prakash', dob: '2013-09-12', category: 'INDIVIDUAL', createdAt: '2026-09-12' },
-    { id: 'STU0006', instituteId: 'INS002', name: 'Kaviya S', dob: '2015-01-03', category: 'FIGHT', createdAt: '2026-09-21' },
-    { id: 'STU0007', instituteId: 'INS003', name: 'Vetri Selvan', dob: '2011-12-18', category: 'FIGHT', createdAt: '2026-09-16' },
-    { id: 'STU0008', instituteId: 'INS004', name: 'Yazhini M', dob: '2017-02-27', category: 'INDIVIDUAL', createdAt: '2026-09-27' }
-  ],
-  studentSequence: 9,
-  referees: [
-    { id: 'REF0001', instituteId: 'INS001', name: 'S. Prabhu', age: 34, academyName: 'Veera Silambam Academy', phone: '9880011223' },
-    { id: 'REF0002', instituteId: 'INS001', name: 'J. Kala', age: 29, academyName: 'Veera Silambam Academy', phone: '9880011224' },
-    { id: 'REF0003', instituteId: 'INS002', name: 'P. Anand', age: 41, academyName: 'Maruthu Warriors', phone: '9840098765' },
-    { id: 'REF0004', instituteId: 'INS003', name: 'V. Mani', age: 37, academyName: 'Thendral Martial Arts', phone: '9789054321' }
-  ],
+  
   ageGroups: [
     { label: 'Under 10', min: 0, max: 10 },
     { label: 'Under 12', min: 11, max: 12 },
@@ -81,18 +59,25 @@ let modalState = null;
 const initialPage = location.hash.slice(1);
 if (session && NAV_ITEMS.some(item => item.id === initialPage && item.roles.includes(session.role))) activePage = initialPage;
 
+
 function loadData() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved && Array.isArray(saved.institutes) && Array.isArray(saved.students)) {
-      const merged = { ...structuredClone(seed), ...saved };
-      const highestId = merged.students.reduce((max, student) => Math.max(max, Number(String(student.id).replace('STU', '')) || 0), 0);
-      merged.studentSequence = Math.max(Number(merged.studentSequence) || 1, highestId + 1);
-      return merged;
+
+    if (saved && Array.isArray(saved.institutes)) {
+      return {
+        ...structuredClone(seed),
+        ...saved,
+        institutes: []
+      };
     }
-  } catch (error) { console.warn('Stored demo records could not be read.', error); }
+  } catch (error) {
+    console.warn('Stored data could not be read.', error);
+  }
+
   return structuredClone(seed);
 }
+
 
 function loadSession() {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)); }
@@ -189,14 +174,17 @@ console.log('PROFILE RESTORE:', {
   error: profileError?.message
 });
 
-    if (profile.role === 'organiser') {
-      session = { role: 'ORGANISER', userId: user.id };
-      activePage = 'dashboard';
-      render();
 
-      await loadRefereesFromSupabase();
-      return;
-    }
+if (profile.role === 'organiser') {
+  session = { role: 'ORGANISER', userId: user.id };
+  activePage = 'dashboard';
+  render();
+
+  await loadInstitutesFromSupabase();
+  await loadRefereesFromSupabase();
+  return;
+}
+
 
     if (profile.role !== 'academy' || !profile.academy_id) {
       await signOut(supabaseClient);
@@ -1004,6 +992,34 @@ async function deleteStudent(id) {
   } catch (error) {
     console.error('Participant delete failed:', error);
     toast(`Participant delete failed: ${error.message}`, true);
+  }
+}
+
+
+async function loadInstitutesFromSupabase() {
+  try {
+    const { data: rows, error } = await supabaseClient
+      .from('academies')
+      .select('id, academy_code, academy_name, master_name, phone, email')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    data.institutes = (rows || []).map(academy => ({
+      id: academy.id,
+      loginId: academy.academy_code || academy.id,
+      academyName: academy.academy_name,
+      masterName: academy.master_name || '',
+      phone: academy.phone || '',
+      email: academy.email || '',
+      createdAt: academy.created_at || new Date().toISOString()
+    }));
+
+    persist();
+    render();
+  } catch (error) {
+    console.error('Load academies failed:', error);
+    toast(`Could not load academies: ${error.message}`, true);
   }
 }
 
