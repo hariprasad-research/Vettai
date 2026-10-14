@@ -49,6 +49,22 @@ const seed = {
 };
 
 
+let data = loadData();
+// Never trust a browser-stored role; authenticate with Supabase.
+let session = null;
+let authView = 'login';
+let signupCreatedId = null;
+let activePage = 'dashboard';
+let selectedInstitute = null;
+let searchText = '';
+let categoryFilter = 'ALL';
+let instituteFilter = 'ALL';
+let ageGroupFilter = 'ALL';
+let modalState = null;
+const initialPage = location.hash.slice(1);
+if (session && NAV_ITEMS.some(item => item.id === initialPage && item.roles.includes(session.role))) activePage = initialPage;
+
+
 
 function loadData() {
   try {
@@ -74,25 +90,6 @@ function loadData() {
   return structuredClone(seed);
 }
 
-
-
-function loadData() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-
-    if (saved && Array.isArray(saved.institutes)) {
-      return {
-        ...structuredClone(seed),
-        ...saved,
-        institutes: []
-      };
-    }
-  } catch (error) {
-    console.warn('Stored data could not be read.', error);
-  }
-
-  return structuredClone(seed);
-}
 
 
 function loadSession() {
