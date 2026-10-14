@@ -1,9 +1,26 @@
+import { esc, ageAtMatch, dateLabel, csvCell, nextId } from './utils.js';
+import { signInWithPassword, signUpAcademy, signOut } from './auth.js';
+import { participantFromRow, participantPayload, newParticipantPayload } from './participants.js';
+import {
+  refereeValues,
+  refereeFromRow,
+  loadReferees,
+  createReferee,
+  updateReferee,
+  deleteReferee as deleteRefereeFromSupabase
+} from './referees.js';
+
 const MATCH_DATE = '2026-10-25';
 const STORAGE_KEY = 'vettai-match-data-v1';
 const SESSION_KEY = 'vettai-match-session-v1';
-const SUPABASE_URL = 'https://ohnihowchmrudrxzfhcr.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable__pfsopXIvAT85QNVkMv9SQ_bM6sS1qS';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } =
+  window.VETTAI_CONFIG;
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '⌂', roles: ['ORGANISER', 'INSTITUTE'] },
   { id: 'institutes', label: 'Institutes', icon: '▦', roles: ['ORGANISER'] },
@@ -50,8 +67,8 @@ const seed = {
 };
 
 let data = loadData();
-let session = null; // Never trust a browser-stored role; authenticate with Supabase.
-try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+// Never trust a browser-stored role; authenticate with Supabase.
+let session = null;
 let authView = 'login';
 let signupCreatedId = null;
 let activePage = 'dashboard';
@@ -99,39 +116,152 @@ async function loadParticipantsFromSupabase() {
     return;
   }
 
-  data.students = rows.map(row => {
-    let events = [];
-    try {
-      events = Array.isArray(row.events)
-        ? row.events
-        : JSON.parse(row.events || "[]");
-    } catch {
-      events = [];
-    }
-
-    return {
-      id: row.participant_code,
-      dbId: row.id,
-      instituteId: row.academy_id,
-      name: row.name,
-      age: row.age,
-      weight: row.weight ?? "",
-      events,
-      category: events.length === 2
-        ? "BOTH"
-        : (events[0] || ""),
-      createdAt: row.created_at
-        ? row.created_at.slice(0, 10)
-        : ""
-    };
-  });
+  data.students = rows.map(participantFromRow);
 
   render();
 }
 
+async function loadRefereesFromSupabase() {
+  try {
+    const academyId = currentInstitute()?.id;
+
+    let query = supabaseClient
+      .from('referees')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (!isOrganiser()) {
+      if (!academyId) throw new Error('Academy ID missing.');
+      query = query.eq('academy_id', academyId);
+    }
+
+    const { data: rows, error } = await query;
+
+    if (error) throw error;
+
+    data.referees = (rows || []).map(refereeFromRow);
+    render();
+  } catch (error) {
+    console.error('Load referees failed:', error);
+    toast(`Could not load referees: ${error.message}`, true);
+  }
+}
+
+
+async function restoreAuthSession() {
+  try {
+    // Verify the currently authenticated Supabase user.
+    const { data: authData, error: authError } =
+      await supabaseClient.auth.getUser();
+
+    if (authError || !authData.user) {
+      session = null;
+      render();
+      return;
+    }
+console.log('AUTH RESTORE:', {
+  user: authData?.user?.id,
+  error: authError?.message
+});
+    const user = authData.user;
+
+    // Always load the role from the database.
+    const { data: profile, error: profileError } =
+      await supabaseClient
+        .from('profiles')
+        .select('id, role, academy_id')
+        .eq('id', user.id)
+        .single();
+
+if (profileError || !profile) {
+  console.error('PROFILE RESTORE FAILED:', profileError);
+  session = null;
+  render();
+  toast(
+    `Profile restore failed: ${profileError?.message || 'Profile not found'}`,
+    true
+  );
+  return;
+}
+
+console.log('PROFILE RESTORE:', {
+  profile,
+  error: profileError?.message
+});
+
+    if (profile.role === 'organiser') {
+      session = { role: 'ORGANISER', userId: user.id };
+      activePage = 'dashboard';
+      render();
+
+      await loadRefereesFromSupabase();
+      return;
+    }
+
+    if (profile.role !== 'academy' || !profile.academy_id) {
+      await signOut(supabaseClient);
+      session = null;
+      render();
+      return;
+    }
+
+    const { data: academy, error: academyError } =
+      await supabaseClient
+        .from('academies')
+        .select(
+          'id, academy_code, academy_name, master_name, phone, email'
+        )
+        .eq('id', profile.academy_id)
+        .single();
+
+   if (academyError || !academy) {
+  console.error('ACADEMY RESTORE FAILED:', academyError);
+  session = null;
+  render();
+  toast(
+    `Academy restore failed: ${academyError?.message || 'Academy not found'}`,
+    true
+  );
+  return;
+}
+
+    const institute = {
+      id: academy.id,
+      loginId: academy.academy_code || academy.id,
+      academyName: academy.academy_name,
+      masterName: academy.master_name,
+      phone: academy.phone,
+      email: academy.email
+    };
+
+    if (!data.institutes.some(item => item.id === institute.id)) {
+      data.institutes.push(institute);
+    }
+
+    session = {
+      role: 'INSTITUTE',
+      instituteId: institute.id,
+      institute,
+      userId: user.id
+    };
+
+    activePage = 'participants';
+    render();
+
+    await loadParticipantsFromSupabase();
+    await loadRefereesFromSupabase();
+
+  } catch (error) {
+    console.error('Session restore failed:', error);
+    session = null;
+    render();
+    toast('Could not restore your login. Please sign in again.', true);
+  }
+}
+
+
 function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 function persistSession() { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
-function esc(value = '') { return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
 function instituteById(id) { return data.institutes.find(item => item.id === id); }
 function currentInstitute() { return session?.role === 'INSTITUTE' ? (instituteById(session.instituteId) || session.institute || null) : null; }
 function isOrganiser() { return session?.role === 'ORGANISER'; }
@@ -143,26 +273,10 @@ function participantEvents(student) {
 }
 function eventLabel(student) { return participantEvents(student).map(event => event === 'INDIVIDUAL' ? 'Individual' : 'Fight').join(' + ') || '—'; }
 function weightLabel(student) { return student.weight ? `${esc(student.weight)}${/kg/i.test(student.weight) ? '' : ' KG'}` : '—'; }
-function ageAtMatch(dob) {
-  const birth = new Date(`${dob}T00:00:00`);
-  const event = new Date(`${MATCH_DATE}T00:00:00`);
-  if (!dob || Number.isNaN(birth.getTime()) || birth > event) return null;
-  let age = event.getFullYear() - birth.getFullYear();
-  if (event.getMonth() < birth.getMonth() || (event.getMonth() === birth.getMonth() && event.getDate() < birth.getDate())) age--;
-  return age;
-}
 function ageGroup(age) { return data.ageGroups.find(group => age >= Number(group.min) && age <= Number(group.max)); }
 function instituteStudents(id) { return data.students.filter(student => student.instituteId === id); }
 function instituteReferees(id) { return data.referees.filter(referee => referee.instituteId === id); }
-function nextId(collection, prefix, length = 4) {
-  const largest = collection.reduce((max, record) => Math.max(max, Number(String(record.id).replace(prefix, '')) || 0), 0);
-  return `${prefix}${String(largest + 1).padStart(length, '0')}`;
-}
 function nextStudentCode() { return `STU${String(data.studentSequence).padStart(4, '0')}`; }
-function dateLabel(value) {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value}T00:00:00`));
-}
 function allStats(students = data.students) {
   const events = students.map(participantEvents);
   return {
@@ -500,7 +614,7 @@ function login(role, instituteId = null) {
   history.replaceState({ page: 'dashboard' }, '', '#dashboard');
   render();
 }
-async function logout() { await supabaseClient.auth.signOut(); authView = 'login'; session = null; sessionStorage.removeItem(SESSION_KEY); activePage = 'dashboard'; history.replaceState(null, '', location.pathname + location.search); render(); }
+async function logout() { await signOut(supabaseClient); authView = 'login'; session = null; sessionStorage.removeItem(SESSION_KEY); activePage = 'dashboard'; history.replaceState(null, '', location.pathname + location.search); render(); }
 function closeModal() { modalState = null; renderModal(); }
 function toggleRegistration() {
   data.registrationOpen = !data.registrationOpen;
@@ -526,7 +640,6 @@ function generatePitches() {
   toast(`${data.pitches.length} pitch${data.pitches.length === 1 ? '' : 'es'} generated from registered participants.`);
 }
 
-function csvCell(value) { return `"${String(value ?? '').replace(/"/g, '""')}"`; }
 function downloadCsv(filename, headers, rows) {
   const content = '\ufeff' + [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
   const link = document.createElement('a');
@@ -596,7 +709,19 @@ document.addEventListener('click', event => {
   else if (action === 'edit-institute') { modalState = { type: 'institute-edit', id: button.dataset.id, profileMode: button.dataset.profile === 'true' }; renderModal(); }
   else if (action === 'add-referee') { if (!data.registrationOpen) toast('Registration is closed.', true); else { modalState = { type: 'referee' }; renderModal(); } }
   else if (action === 'edit-referee') { modalState = { type: 'referee', id: button.dataset.id }; renderModal(); }
-  else if (action === 'delete-referee') deleteReferee(button.dataset.id);
+  else if (action === 'delete-referee') {
+  deleteRefereeFromSupabase(supabaseClient, currentInstitute()?.id, button.dataset.id)
+    .then(() => {
+      data.referees = data.referees.filter(referee => referee.id !== button.dataset.id);
+      persist();
+      render();
+      toast('Referee deleted successfully.');
+    })
+    .catch(error => {
+      console.error('Referee delete failed:', error);
+      toast('Could not delete referee. Check console.', true);
+    });
+}
   else if (action === 'view-referee') { modalState = { type: 'referee-view', id: button.dataset.id }; renderModal(); }
   else if (action === 'view-pitch') { modalState = { type: 'pitch-view', id: button.dataset.id }; renderModal(); }
   else if (action === 'toggle-registration') toggleRegistration();
@@ -612,22 +737,24 @@ document.addEventListener('submit', async event => {
     const form = new FormData(event.target);
     const email = String(form.get('loginId') || '').trim().toLowerCase();
     const password = String(form.get('password') || '');
-    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { data: authData, error: authError } = await signInWithPassword(supabaseClient, email, password);
     if (authError) { toast(authError.message || 'Email or password is incorrect.', true); return; }
     const user = authData.user;
     const { data: profile, error: profileError } = await supabaseClient.from('profiles').select('id, role, academy_id').eq('id', user.id).single();
-    if (profileError || !profile) { await supabaseClient.auth.signOut(); toast('Account profile not found. Contact the organiser.', true); return; }
+    if (profileError || !profile) { await signOut(supabaseClient); toast('Account profile not found. Contact the organiser.', true); return; }
     if (profile.role === 'organiser') { login('ORGANISER'); return; }
-    if (profile.role !== 'academy' || !profile.academy_id) { await supabaseClient.auth.signOut(); toast('This account has no academy assigned.', true); return; }
+    if (profile.role !== 'academy' || !profile.academy_id) { await signOut(supabaseClient); toast('This account has no academy assigned.', true); return; }
     const { data: academy, error: academyError } = await supabaseClient.from('academies').select('id, academy_code, academy_name, master_name, phone, email').eq('id', profile.academy_id).single();
-    if (academyError || !academy) { await supabaseClient.auth.signOut(); toast('Academy profile could not be loaded.', true); return; }
+    if (academyError || !academy) { await signOut(supabaseClient); toast('Academy profile could not be loaded.', true); return; }
     const institute = { id: academy.id, loginId: academy.academy_code || academy.id, academyName: academy.academy_name, masterName: academy.master_name, phone: academy.phone, email: academy.email };
     if (!data.institutes.some(x => x.id === institute.id)) data.institutes.push(institute);
     session = { role: 'INSTITUTE', instituteId: institute.id, institute, userId: user.id };
-    authView = 'login';
-    activePage = 'participants';
-    render();
-    await loadParticipantsFromSupabase();
+    
+authView = 'login';
+activePage = 'participants';
+render();
+await loadParticipantsFromSupabase();
+await loadRefereesFromSupabase();
 
   } else if (event.target.id === 'academy-signup-form') {
     event.preventDefault();
@@ -635,10 +762,7 @@ document.addEventListener('submit', async event => {
     const values = validateAcademySignup(form);
     if (!values) return;
     if (!values.email) { toast('Email address is required.', true); return; }
-    const { data: signUpData, error } = await supabaseClient.auth.signUp({
-      email: values.email.toLowerCase(), password: values.password,
-      options: { data: { academy_name: values.academyName, master_name: values.masterName, phone: values.phone } }
-    });
+    const { data: signUpData, error } = await signUpAcademy(supabaseClient, values);
     if (error) { const n=form.querySelector('[data-error-for="email"]'); if(n) n.textContent=error.message; toast(error.message, true); return; }
     signupCreatedId = signUpData.user?.id || null;
     authView = 'signup-success'; render();
@@ -650,82 +774,71 @@ document.addEventListener('submit', async event => {
     const values = { name: String(form.get('name') || '').trim(), age: Number(form.get('age')), weight: String(form.get('weight') || '').trim(), events, category: events.length === 2 ? 'BOTH' : events[0], instituteId: event.target.dataset.id ? data.students.find(student => student.id === event.target.dataset.id)?.instituteId : currentInstitute()?.id };
     if (!values.name || !Number.isInteger(values.age) || values.age < 0 || values.age > 99 || !events.length || !values.instituteId) { toast('Enter a name and valid age, then select at least one event.', true); return; }
 
-    const existing = data.students.find(
-      student => student.id === event.target.dataset.id
-    );
+const existing = data.students.find(
+  student => student.id === event.target.dataset.id
+);
 
-    if (existing) {
-      const { data: updated, error } = await supabaseClient
-        .from('participants')
-        .update({
-          name: values.name,
-          age: values.age,
-          weight: values.weight ? Number(values.weight) : null,
-          events: JSON.stringify(values.events)
-        })
-        .eq('participant_code', existing.id)
-        .eq('academy_id', existing.instituteId)
-        .select()
-        .single();
+if (existing) {
+  const { data: updated, error } = await supabaseClient
+    .from('participants')
+    .update(participantPayload(values))
+    .eq('participant_code', existing.id)
+    .eq('academy_id', existing.instituteId)
+    .select()
+    .single();
 
-      if (error) {
-        console.error('Participant update failed:', error);
-        toast(`Update failed: ${error.message}`, true);
-        return;
-      }
+  if (error) {
+    console.error('Participant update failed:', error);
+    toast(`Update failed: ${error.message}`, true);
+    return;
+  }
 
-      Object.assign(existing, {
-        name: updated.name,
-        age: updated.age,
-        weight: updated.weight ?? '',
-        events: values.events,
-        category: values.category
-      });
+  Object.assign(existing, {
+    name: updated.name,
+    age: updated.age,
+    weight: updated.weight ?? '',
+    events: values.events,
+    category: values.category
+  });
 
-      invalidatePitches();
-      modalState = null;
-      render();
-      toast('Participant updated in Supabase.');
-      return;
-    }
+  invalidatePitches();
+  modalState = null;
+  render();
+  toast('Participant updated in Supabase.');
+  return;
+}
 
-    const participantCode = nextStudentCode();
-    const { data: savedParticipant, error } = await supabaseClient
-      .from('participants')
-      .insert({
-        participant_code: participantCode,
-        academy_id: values.instituteId,
-        name: values.name,
-        age: values.age,
-        weight: values.weight ? Number(values.weight) : null,
-        events: JSON.stringify(values.events)
-      })
-      .select()
-      .single();
+const participantCode = nextStudentCode();
 
-    if (error) {
-      console.error('Participant save failed:', error);
-      toast(`Supabase save failed: ${error.message}`, true);
-      return;
-    }
+const { data: savedParticipant, error } = await supabaseClient
+  .from('participants')
+  .insert(newParticipantPayload(values, participantCode))
+  .select()
+  .single();
 
-    data.students.push({
-      id: savedParticipant.participant_code,
-      dbId: savedParticipant.id,
-      instituteId: savedParticipant.academy_id,
-      name: savedParticipant.name,
-      age: savedParticipant.age,
-      weight: savedParticipant.weight ?? '',
-      events: values.events,
-      category: values.category,
-      createdAt: new Date().toISOString().slice(0, 10)
-    });
+if (error) {
+  console.error('Participant save failed:', error);
+  toast(`Supabase save failed: ${error.message}`, true);
+  return;
+}
 
-    data.studentSequence++;
-    invalidatePitches();
-    modalState = null;
-    render();
-    toast('Participant saved to Supabase successfully.');
+data.students.push({
+  id: savedParticipant.participant_code,
+  dbId: savedParticipant.id,
+  instituteId: savedParticipant.academy_id,
+  name: savedParticipant.name,
+  age: savedParticipant.age,
+  weight: savedParticipant.weight ?? '',
+  events: values.events,
+  category: values.category,
+  createdAt: new Date().toISOString().slice(0, 10)
+});
+
+data.studentSequence++;
+invalidatePitches();
+modalState = null;
+render();
+toast('Participant saved to Supabase successfully.');
 
   } else if (event.target.id === 'institute-form') {
     event.preventDefault();
@@ -744,16 +857,58 @@ document.addEventListener('submit', async event => {
     }
     persist(); modalState = null; render(); toast(existing ? 'Academy profile updated.' : 'Institute created.');
   } else if (event.target.id === 'referee-form') {
-    event.preventDefault();
-    if (!data.registrationOpen && !isOrganiser()) { toast('Registration is closed.', true); closeModal(); return; }
+  event.preventDefault();
+
+  if (!data.registrationOpen && !isOrganiser()) {
+    toast('Registration is closed.', true);
+    closeModal();
+    return;
+  }
+
+  try {
     const form = new FormData(event.target);
     const id = event.target.dataset.id;
-    const existing = data.referees.find(referee => referee.id === id);
-    const values = { name: String(form.get('name')).trim(), age: Number(form.get('age')), phone: String(form.get('phone')).trim(), academyName: String(form.get('academyName')).trim() };
-    if (existing) Object.assign(existing, values);
-    else data.referees.push({ id: nextId(data.referees, 'REF'), instituteId: currentInstitute().id, ...values });
-    persist(); modalState = null; render(); toast(existing ? 'Referee updated.' : 'Referee added.');
-  } else if (event.target.id === 'age-groups-form') {
+    const existing = data.referees.find(item => item.id === id);
+    const values = refereeValues(form);
+    const academyId = existing?.instituteId || currentInstitute()?.id;
+
+    if (!academyId) {
+      throw new Error('Academy ID not found.');
+    }
+
+    let saved;
+
+    if (existing) {
+      saved = await updateReferee(
+        supabaseClient,
+        academyId,
+        id,
+        values
+      );
+
+      data.referees = data.referees.map(item =>
+        item.id === id ? saved : item
+      );
+    } else {
+      saved = await createReferee(
+        supabaseClient,
+        academyId,
+        values
+      );
+
+      data.referees.push(saved);
+    }
+
+    modalState = null;
+    render();
+    toast(existing
+      ? 'Referee updated in Supabase.'
+      : 'Referee saved to Supabase.');
+  } catch (error) {
+    console.error('Referee save failed:', error);
+    toast(`Supabase save failed: ${error.message}`, true);
+  } 
+}else if (event.target.id === 'age-groups-form') {
     event.preventDefault();
     const form = new FormData(event.target);
     const limits = data.ageGroups.map((group, index) => Number(form.get(`max-${index}`)));
@@ -798,22 +953,59 @@ window.addEventListener('popstate', event => {
 function invalidatePitches() {
   if (data.pitches.length) data.pitches = [];
 }
-function deleteStudent(id) {
-  if (!data.registrationOpen && !isOrganiser()) { toast('Registration is closed.', true); return; }
+
+async function deleteStudent(id) {
+  if (!data.registrationOpen && !isOrganiser()) {
+    toast('Registration is closed.', true);
+    return;
+  }
+
   const student = data.students.find(item => item.id === id);
-  if (student && !isOrganiser() && student.instituteId !== currentInstitute()?.id) return;
-  if (!student || !confirm(`Delete ${student.name} (${student.id})?`)) return;
-  data.students = data.students.filter(item => item.id !== id);
-  invalidatePitches();
-  persist(); render(); toast('Participant deleted.');
-}
-function deleteReferee(id) {
-  if (!data.registrationOpen && !isOrganiser()) { toast('Registration is closed.', true); return; }
-  const referee = data.referees.find(item => item.id === id);
-  if (referee && !isOrganiser() && referee.instituteId !== currentInstitute()?.id) return;
-  if (!referee || !confirm(`Delete referee ${referee.name}?`)) return;
-  data.referees = data.referees.filter(item => item.id !== id);
-  persist(); render(); toast('Referee deleted.');
+  if (!student) {
+    toast('Participant not found.', true);
+    return;
+  }
+
+  if (!isOrganiser() && student.instituteId !== currentInstitute()?.id) {
+    toast('You cannot delete another academy’s participant.', true);
+    return;
+  }
+
+  if (!confirm(`Delete ${student.name} (${student.id}) permanently?`)) {
+    return;
+  }
+
+  try {
+    let query = supabaseClient
+      .from('participants')
+      .delete()
+      .eq('participant_code', student.id);
+
+    // Academy accounts may delete only their own participants.
+    if (!isOrganiser()) {
+      query = query.eq('academy_id', currentInstitute().id);
+    }
+
+    const { data: deletedRows, error } = await query
+      .select('id');
+
+    if (error) throw error;
+
+    if (!deletedRows || deletedRows.length === 0) {
+      throw new Error(
+        'No participant was deleted. Check Supabase permissions and the participant ID.'
+      );
+    }
+
+    data.students = data.students.filter(item => item.id !== id);
+    invalidatePitches();
+    render();
+    toast('Participant deleted from Supabase successfully.');
+  } catch (error) {
+    console.error('Participant delete failed:', error);
+    toast(`Participant delete failed: ${error.message}`, true);
+  }
 }
 
-render();
+
+restoreAuthSession();
