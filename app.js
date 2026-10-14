@@ -178,13 +178,35 @@ console.log('PROFILE RESTORE:', {
 if (profile.role === 'organiser') {
   session = { role: 'ORGANISER', userId: user.id };
   activePage = 'dashboard';
-  render();
 
   await loadInstitutesFromSupabase();
+  await loadAllParticipantsFromSupabase();
   await loadRefereesFromSupabase();
+
+  render();
   return;
 }
 
+async function loadAllParticipantsFromSupabase() {
+  try {
+    const { data: rows, error } = await supabaseClient
+      .from('participants')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    data.students = (rows || []).map(participantFromRow);
+
+    persist();
+    render();
+
+    console.log('Participants loaded:', data.students.length);
+  } catch (error) {
+    console.error('Load all participants failed:', error);
+    toast(`Could not load participants: ${error.message}`, true);
+  }
+}
 
     if (profile.role !== 'academy' || !profile.academy_id) {
       await signOut(supabaseClient);
@@ -265,15 +287,21 @@ function ageGroup(age) { return data.ageGroups.find(group => age >= Number(group
 function instituteStudents(id) { return data.students.filter(student => student.instituteId === id); }
 function instituteReferees(id) { return data.referees.filter(referee => referee.instituteId === id); }
 function nextStudentCode() { return `STU${String(data.studentSequence).padStart(4, '0')}`; }
+
 function allStats(students = data.students) {
-  const events = students.map(participantEvents);
+  const list = Array.isArray(students) ? students : [];
+  const events = list.map(participantEvents);
+
   return {
-    total: students.length,
-    individual: events.filter(list => list.includes('INDIVIDUAL')).length,
-    fight: events.filter(list => list.includes('FIGHT')).length,
-    both: events.filter(list => list.includes('INDIVIDUAL') && list.includes('FIGHT')).length
+    total: list.length,
+    individual: events.filter(items => items.includes('INDIVIDUAL')).length,
+    fight: events.filter(items => items.includes('FIGHT')).length,
+    both: events.filter(
+      items => items.includes('INDIVIDUAL') && items.includes('FIGHT')
+    ).length
   };
 }
+
 function toast(message, error = false) {
   const node = document.createElement('div');
   node.className = `toast${error ? ' error' : ''}`;
@@ -343,7 +371,21 @@ function renderAcademySignup() {
       <form id="academy-signup-form" novalidate>
         <div class="field"><label for="signup-academy-name">Academy Name</label><input id="signup-academy-name" name="academyName" type="text" placeholder="Enter academy name" required><div class="validation-message" data-error-for="academyName"></div></div>
         <div class="field"><label for="signup-master-name">Master Name</label><input id="signup-master-name" name="masterName" type="text" placeholder="Enter master name" required><div class="validation-message" data-error-for="masterName"></div></div>
-        <div class="field"><label for="signup-phone">Phone Number</label><input id="signup-phone" name="phone" type="tel" placeholder="Enter phone number" required><div class="validation-message" data-error-for="phone"></div></div>
+        <div class="field">
+  <label for="signup-phone">Phone Number</label>
+  <input
+    id="signup-phone"
+    name="phone"
+    type="tel"
+    inputmode="numeric"
+    pattern="[0-9]{10}"
+    minlength="10"
+    maxlength="10"
+    placeholder="Enter 10-digit mobile number"
+    required
+  >
+  <div class="validation-message" data-error-for="phone"></div>
+</div>
         <div class="field"><label for="signup-email">Email</label><input id="signup-email" name="email" type="email" placeholder="Enter email address"><div class="validation-message" data-error-for="email"></div></div>
         <div class="field"><label for="signup-password">Password</label><input id="signup-password" name="password" type="password" placeholder="Enter password" required><div class="validation-message" data-error-for="password"></div></div>
         <div class="field"><label for="signup-confirm-password">Confirm Password</label><input id="signup-confirm-password" name="confirmPassword" type="password" placeholder="Confirm password" required><div class="validation-message" data-error-for="confirmPassword"></div></div>
@@ -381,8 +423,11 @@ function validateAcademySignup(form) {
   const errors = {};
   if (!values.academyName) errors.academyName = 'Academy name is required.';
   if (!values.masterName) errors.masterName = 'Master name is required.';
-  if (!values.phone) errors.phone = 'Phone number is required.';
-  else if (!/^(?:\+?[0-9][0-9\s()-]{9,14})$/.test(values.phone) || (values.phone.replace(/\D/g, '').length < 10)) errors.phone = 'Enter a valid phone number.';
+  if (!values.phone) {
+  errors.phone = 'Phone number is required.';
+} else if (!/^[0-9]{10}$/.test(values.phone)) {
+  errors.phone = 'Enter exactly 10 digits.';
+}
   if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.email = 'Enter a valid email address.';
   if (!values.password) errors.password = 'Password is required.';
   else if (values.password.length < 6) errors.password = 'Password must be at least 6 characters.';
