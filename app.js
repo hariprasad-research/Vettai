@@ -31,9 +31,13 @@ const NAV_ITEMS = [
   { id: 'profile', label: 'Profile', icon: '◉', roles: ['INSTITUTE'] }
 ];
 
+
 const seed = {
   registrationOpen: true,
-  
+  institutes: [],
+  students: [],
+  referees: [],
+  studentSequence: 1,
   ageGroups: [
     { label: 'Under 10', min: 0, max: 10 },
     { label: 'Under 12', min: 11, max: 12 },
@@ -44,20 +48,32 @@ const seed = {
   pitches: []
 };
 
-let data = loadData();
-// Never trust a browser-stored role; authenticate with Supabase.
-let session = null;
-let authView = 'login';
-let signupCreatedId = null;
-let activePage = 'dashboard';
-let selectedInstitute = null;
-let searchText = '';
-let categoryFilter = 'ALL';
-let instituteFilter = 'ALL';
-let ageGroupFilter = 'ALL';
-let modalState = null;
-const initialPage = location.hash.slice(1);
-if (session && NAV_ITEMS.some(item => item.id === initialPage && item.roles.includes(session.role))) activePage = initialPage;
+
+
+function loadData() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+
+    if (saved && typeof saved === 'object') {
+      return {
+        ...structuredClone(seed),
+        ...saved,
+        institutes: [],
+        students: [],
+        referees: [],
+        ageGroups: Array.isArray(saved.ageGroups)
+          ? saved.ageGroups
+          : structuredClone(seed.ageGroups),
+        pitches: Array.isArray(saved.pitches) ? saved.pitches : []
+      };
+    }
+  } catch (error) {
+    console.warn('Stored data could not be read.', error);
+  }
+
+  return structuredClone(seed);
+}
+
 
 
 function loadData() {
@@ -187,6 +203,7 @@ if (profile.role === 'organiser') {
   return;
 }
 
+
 async function loadAllParticipantsFromSupabase() {
   try {
     const { data: rows, error } = await supabaseClient
@@ -199,14 +216,13 @@ async function loadAllParticipantsFromSupabase() {
     data.students = (rows || []).map(participantFromRow);
 
     persist();
-    render();
-
     console.log('Participants loaded:', data.students.length);
   } catch (error) {
     console.error('Load all participants failed:', error);
     toast(`Could not load participants: ${error.message}`, true);
   }
 }
+
 
     if (profile.role !== 'academy' || !profile.academy_id) {
       await signOut(supabaseClient);
@@ -287,8 +303,17 @@ function participantEvents(student) {
 function eventLabel(student) { return participantEvents(student).map(event => event === 'INDIVIDUAL' ? 'Individual' : 'Fight').join(' + ') || '—'; }
 function weightLabel(student) { return student.weight ? `${esc(student.weight)}${/kg/i.test(student.weight) ? '' : ' KG'}` : '—'; }
 function ageGroup(age) { return data.ageGroups.find(group => age >= Number(group.min) && age <= Number(group.max)); }
-function instituteStudents(id) { return data.students.filter(student => student.instituteId === id); }
-function instituteReferees(id) { return data.referees.filter(referee => referee.instituteId === id); }
+
+function instituteStudents(id) {
+  const students = Array.isArray(data.students) ? data.students : [];
+  return students.filter(student => student.instituteId === id);
+}
+
+function instituteReferees(id) {
+  const referees = Array.isArray(data.referees) ? data.referees : [];
+  return referees.filter(referee => referee.instituteId === id);
+}
+
 function nextStudentCode() { return `STU${String(data.studentSequence).padStart(4, '0')}`; }
 
 function allStats(students = data.students) {
@@ -1053,15 +1078,17 @@ async function loadInstitutesFromSupabase() {
   try {
     const { data: rows, error } = await supabaseClient
       .from('academies')
-      .select('id, academy_code, academy_name, master_name, phone, email')
+      .select('id, academy_code, academy_name, master_name, phone, email, created_at')
       .order('created_at', { ascending: true });
 
     if (error) throw error;
 
+    console.log('Academies returned:', rows?.length, rows);
+
     data.institutes = (rows || []).map(academy => ({
       id: academy.id,
       loginId: academy.academy_code || academy.id,
-      academyName: academy.academy_name,
+      academyName: academy.academy_name || '',
       masterName: academy.master_name || '',
       phone: academy.phone || '',
       email: academy.email || '',
@@ -1069,12 +1096,12 @@ async function loadInstitutesFromSupabase() {
     }));
 
     persist();
-    render();
   } catch (error) {
     console.error('Load academies failed:', error);
     toast(`Could not load academies: ${error.message}`, true);
   }
 }
+
 
 
 restoreAuthSession();
