@@ -52,7 +52,7 @@ const seed = {
 let data = loadData();
 // Never trust a browser-stored role; authenticate with Supabase.
 let session = null;
-let authView = 'login';
+let authView = 'registration';
 let signupCreatedId = null;
 let activePage = 'dashboard';
 let selectedInstitute = null;
@@ -337,9 +337,17 @@ function toast(message, error = false) {
 
 
 
+
 function render() {
   const root = document.querySelector('#app');
-  if (!session) { root.innerHTML = renderLogin(); return; }
+
+  if (!session) {
+    root.innerHTML = authView === 'login'
+      ? renderLogin()
+      : renderRegistrationChoice();
+    return;
+  }
+
   if (session.role === 'INSTITUTE' && !currentInstitute()) { logout(); return; }
   const visibleNav = NAV_ITEMS.filter(item => item.roles.includes(session.role));
   if (activePage === 'institute-detail' && !isOrganiser()) activePage = 'dashboard';
@@ -379,6 +387,40 @@ function profileRow() {
   return `<div class="profile-row"><div class="avatar">${esc(initials)}</div><div class="profile-meta"><strong>${esc(name)}</strong><small>${esc(role)}</small></div><button class="logout-icon" data-action="logout" title="Log out" aria-label="Log out">↗</button></div>`;
 }
 
+function renderRegistrationChoice() {
+  return `<div class="login-shell">
+    <section class="login-art">${brand()}
+      <div class="art-copy">
+        <p class="eyebrow">One district. One arena.</p>
+        <h1>Discipline meets the day.</h1>
+        <p>Registration, verification and pitch coordination for the district Silambam match.</p>
+        <div class="event-stamp">24 OCTOBER 2026</div>
+      </div>
+      <div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div>
+    </section>
+
+    <section class="login-main">
+      <div class="login-panel">
+        <p class="eyebrow">Registration</p>
+        <h2>Choose Registration Type</h2>
+        <p>Select how you want to register for the tournament.</p>
+
+        <button class="btn btn-primary btn-wide"
+          type="button"
+          data-action="self-registration">
+          Self Registration →
+        </button>
+
+        <button class="btn btn-outline btn-wide"
+          type="button"
+          data-action="academy-registration">
+          Academy / Institution Registration →
+        </button>
+      </div>
+    </section>
+  </div>`;
+}
+
 function renderLogin() {
   if (authView === 'signup') return renderAcademySignup();
   if (authView === 'signup-success') return renderSignupSuccess();
@@ -386,7 +428,13 @@ function renderLogin() {
   return `<div class="login-shell">
     <section class="login-art">${brand()}<div class="art-copy"><p class="eyebrow">One district. One arena.</p><h1>Discipline meets the day.</h1><p>Registration, verification and pitch coordination for the district Silambam match.</p><div class="event-stamp">24 OCTOBER 2026</div></div><div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div></section>
     <section class="login-main"><div class="login-panel"><p class="eyebrow">Match administration</p><h2>Welcome back</h2><p>Sign in to your tournament workspace.</p>
-      <form id="login-form"><div class="field"><label for="login-id">Login ID</label><input id="login-id" name="loginId" autocomplete="username" placeholder="Email address" required></div><div class="field"><label for="login-password">Password</label><input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></div><div class="login-actions"><button class="btn btn-primary btn-wide" type="submit">Sign in <span aria-hidden="true">→</span></button><button class="btn btn-outline btn-inline" type="button" data-action="show-signup">Sign Up</button></div></form>
+      <form id="login-form"><div class="field"><label for="login-id">Login ID</label><input id="login-id" name="loginId" autocomplete="username" placeholder="Email address" required></div><div class="field"><label for="login-password">Password</label><input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></div><div class="login-actions">
+<button class="btn btn-outline btn-wide"
+  type="button"
+  data-action="back-to-registration">
+  ← Back to Registration
+</button>
+<button class="btn btn-primary btn-wide" type="submit">Sign in <span aria-hidden="true">→</span></button><button class="btn btn-outline btn-inline" type="button" data-action="show-signup">Sign Up</button></div></form>
     </div></section>
   </div>`;
 }
@@ -795,10 +843,42 @@ document.addEventListener('click', event => {
     return;
   }
   const actionButton = event.target.closest('[data-action]');
+
+  
+
   if (!actionButton) return;
   const action = actionButton.dataset.action;
+
+
+if (action === 'academy-registration') {
+  authView = 'login';
+  render();
+  return;
+}
+
+
+if (action === 'back-to-registration') {
+  authView = 'registration';
+  render();
+  return;
+}
+
   if (action === 'show-signup') { authView = 'signup'; render(); return; }
   if (action === 'show-login') { authView = 'login'; render(); return; }
+
+  if (action === 'self-registration') {
+  window.location.href = 'https://forms.gle/ythS4AWjPrLGaEwt9'; //g-form link
+  return;
+}
+
+
+
+// if (action === 'academy-registration') {
+//   console.log('Academy button clicked');
+//   authView = 'login';
+//   render();
+//   return;
+// }
 
   const button = actionButton;
   if (action === 'demo-login') login(button.dataset.role, button.dataset.role === 'INSTITUTE' ? 'INS001' : null);

@@ -279,7 +279,7 @@ tbody tr:hover { background: #fbfcf8; }
   .sidebar, .topbar, .page-heading, .toolbar, .side-panel, .mobile-nav, .btn, .banner { display: none !important; }
   .app-shell { display: block; }
   .content { width: 100%; padding: 0; }
-  .content:before { content: 'DISTRICT SILAMBAM MATCH | 25 OCTOBER 2026'; display: block; margin: 0 0 16px; text-align: center; font: 700 16px Manrope, sans-serif; }
+  .content:before { content: 'DISTRICT SILAMBAM MATCH | 24 OCTOBER 2026'; display: block; margin: 0 0 16px; text-align: center; font: 700 16px Manrope, sans-serif; }
   .pitch-list { display: block; }
   .pitch-card { break-inside: avoid; margin: 0 0 20px; }
   .pitch-card-head { background: #f3f4ed !important; print-color-adjust: exact; }
