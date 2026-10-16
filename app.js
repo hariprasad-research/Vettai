@@ -341,12 +341,14 @@ function toast(message, error = false) {
 function render() {
   const root = document.querySelector('#app');
 
-  if (!session) {
-    root.innerHTML = authView === 'login'
-      ? renderLogin()
-      : renderRegistrationChoice();
-    return;
-  }
+
+if (!session) {
+  root.innerHTML = authView === 'registration'
+    ? renderRegistrationChoice()
+    : renderLogin();
+  return;
+}
+
 
   if (session.role === 'INSTITUTE' && !currentInstitute()) { logout(); return; }
   const visibleNav = NAV_ITEMS.filter(item => item.roles.includes(session.role));
@@ -849,6 +851,11 @@ document.addEventListener('click', event => {
   if (!actionButton) return;
   const action = actionButton.dataset.action;
 
+  if (action === 'show-signup') {
+  authView = 'signup';
+  render();
+  return;
+}
 
 if (action === 'academy-registration') {
   authView = 'login';
