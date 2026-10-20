@@ -157,10 +157,10 @@ async function restoreAuthSession() {
       render();
       return;
     }
-console.log('AUTH RESTORE:', {
-  user: authData?.user?.id,
-  error: authError?.message
-});
+    console.log('AUTH RESTORE:', {
+      user: authData?.user?.id,
+      error: authError?.message
+    });
     const user = authData.user;
 
     // Always load the role from the database.
@@ -171,54 +171,54 @@ console.log('AUTH RESTORE:', {
         .eq('id', user.id)
         .single();
 
-if (profileError || !profile) {
-  console.error('PROFILE RESTORE FAILED:', profileError);
-  session = null;
-  render();
-  toast(
-    `Profile restore failed: ${profileError?.message || 'Profile not found'}`,
-    true
-  );
-  return;
-}
+    if (profileError || !profile) {
+      console.error('PROFILE RESTORE FAILED:', profileError);
+      session = null;
+      render();
+      toast(
+        `Profile restore failed: ${profileError?.message || 'Profile not found'}`,
+        true
+      );
+      return;
+    }
 
-console.log('PROFILE RESTORE:', {
-  profile,
-  error: profileError?.message
-});
-
-
-if (profile.role === 'organiser') {
-  session = { role: 'ORGANISER', userId: user.id };
-  activePage = 'dashboard';
-
-  await loadInstitutesFromSupabase();
-  await loadAllParticipantsFromSupabase();
-  await loadRefereesFromSupabase();
-
-  render();
-  return;
-}
+    console.log('PROFILE RESTORE:', {
+      profile,
+      error: profileError?.message
+    });
 
 
-async function loadAllParticipantsFromSupabase() {
-  try {
-    const { data: rows, error } = await supabaseClient
-      .from('participants')
-      .select('*')
-      .order('created_at', { ascending: true });
+    if (profile.role === 'organiser') {
+      session = { role: 'ORGANISER', userId: user.id };
+      activePage = 'dashboard';
 
-    if (error) throw error;
+      await loadInstitutesFromSupabase();
+      await loadAllParticipantsFromSupabase();
+      await loadRefereesFromSupabase();
 
-    data.students = (rows || []).map(participantFromRow);
+      render();
+      return;
+    }
 
-    persist();
-    console.log('Participants loaded:', data.students.length);
-  } catch (error) {
-    console.error('Load all participants failed:', error);
-    toast(`Could not load participants: ${error.message}`, true);
-  }
-}
+
+    async function loadAllParticipantsFromSupabase() {
+      try {
+        const { data: rows, error } = await supabaseClient
+          .from('participants')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        data.students = (rows || []).map(participantFromRow);
+
+        persist();
+        console.log('Participants loaded:', data.students.length);
+      } catch (error) {
+        console.error('Load all participants failed:', error);
+        toast(`Could not load participants: ${error.message}`, true);
+      }
+    }
 
 
     if (profile.role !== 'academy' || !profile.academy_id) {
@@ -237,16 +237,16 @@ async function loadAllParticipantsFromSupabase() {
         .eq('id', profile.academy_id)
         .single();
 
-   if (academyError || !academy) {
-  console.error('ACADEMY RESTORE FAILED:', academyError);
-  session = null;
-  render();
-  toast(
-    `Academy restore failed: ${academyError?.message || 'Academy not found'}`,
-    true
-  );
-  return;
-}
+    if (academyError || !academy) {
+      console.error('ACADEMY RESTORE FAILED:', academyError);
+      session = null;
+      render();
+      toast(
+        `Academy restore failed: ${academyError?.message || 'Academy not found'}`,
+        true
+      );
+      return;
+    }
 
     const institute = {
       id: academy.id,
@@ -257,13 +257,13 @@ async function loadAllParticipantsFromSupabase() {
       email: academy.email
     };
 
-  data.institutes = Array.isArray(data.institutes)
-  ? data.institutes
-  : [];
+    data.institutes = Array.isArray(data.institutes)
+      ? data.institutes
+      : [];
 
-if (!data.institutes.some(item => item.id === institute.id)) {
-  data.institutes.push(institute);
-}
+    if (!data.institutes.some(item => item.id === institute.id)) {
+      data.institutes.push(institute);
+    }
     session = {
       role: 'INSTITUTE',
       instituteId: institute.id,
@@ -342,12 +342,12 @@ function render() {
   const root = document.querySelector('#app');
 
 
-if (!session) {
-  root.innerHTML = authView === 'registration'
-    ? renderRegistrationChoice()
-    : renderLogin();
-  return;
-}
+  if (!session) {
+    root.innerHTML = authView === 'registration'
+      ? renderRegistrationChoice()
+      : renderLogin();
+    return;
+  }
 
 
   if (session.role === 'INSTITUTE' && !currentInstitute()) { logout(); return; }
@@ -541,10 +541,10 @@ function validateAcademySignup(form) {
   if (!values.academyName) errors.academyName = 'Academy name is required.';
   if (!values.masterName) errors.masterName = 'Master name is required.';
   if (!values.phone) {
-  errors.phone = 'Phone number is required.';
-} else if (!/^[0-9]{10}$/.test(values.phone)) {
-  errors.phone = 'Enter exactly 10 digits.';
-}
+    errors.phone = 'Phone number is required.';
+  } else if (!/^[0-9]{10}$/.test(values.phone)) {
+    errors.phone = 'Enter exactly 10 digits.';
+  }
   if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.email = 'Enter a valid email address.';
   if (!values.password) errors.password = 'Password is required.';
   else if (values.password.length < 6) errors.password = 'Password must be at least 6 characters.';
@@ -585,21 +585,21 @@ function renderDashboard() {
   return `${pageHeading('Institute workspace', 'ACADEMY DASHBOARD', 'Your academy details and registrations at a glance.')}
     <div class="banner"><div class="banner-copy"><span class="banner-symbol">✳</span><div><strong>${esc(institute.academyName)}</strong><small>${esc(institute.masterName)} · ${esc(institute.phone)} · ${esc(institute.email || 'Email not provided')}</small></div></div><span class="role-tag">${institute.id}</span></div>
     <section class="stat-grid">${statCard('Total participants', stats.total, 'Registered from your academy', '◉')}${statCard('Individual', stats.individual, 'Individual event', '◎')}${statCard('Fight', stats.fight, 'Fight event', '✳')}${statCard('Both events', stats.both, 'Individual + Fight', '◉')}${statCard('Total referees', instituteReferees(institute.id).length, 'Academy referees', '⌖')}</section>
-    <div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>Recent participants</h2><button class="btn btn-quiet" data-page="participants">View all →</button></div><div class="panel-body">${activityList(students.slice().sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4))}</div></section><section class="panel"><div class="panel-head"><h2>Quick actions</h2><small>Manage your entries</small></div><div class="panel-body"><div class="quick-links"><button class="quick-link" data-action="add-student" ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}><span><strong>Add a participant</strong><small>Register for the October match</small></span><span class="quick-arrow">＋</span></button><button class="quick-link" data-page="referees"><span><strong>Manage referees</strong><small>${instituteReferees(institute.id).length} referees on your roster</small></span><span class="quick-arrow">→</span></button></div>${!data.registrationOpen ? `<p class="note" style="margin:12px 0 0">Registration is closed. New registrations and edits are unavailable.</p>` : ''}</div></section></div>`;
+    <div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>Recent participants</h2><button class="btn btn-quiet" data-page="participants">View all →</button></div><div class="panel-body">${activityList(students.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4))}</div></section><section class="panel"><div class="panel-head"><h2>Quick actions</h2><small>Manage your entries</small></div><div class="panel-body"><div class="quick-links"><button class="quick-link" data-action="add-student" ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}><span><strong>Add a participant</strong><small>Register for the October match</small></span><span class="quick-arrow">＋</span></button><button class="quick-link" data-page="referees"><span><strong>Manage referees</strong><small>${instituteReferees(institute.id).length} referees on your roster</small></span><span class="quick-arrow">→</span></button></div>${!data.registrationOpen ? `<p class="note" style="margin:12px 0 0">Registration is closed. New registrations and edits are unavailable.</p>` : ''}</div></section></div>`;
 }
 function renderOrganiserDashboard() {
 
-data.institutes = Array.isArray(data.institutes) ? data.institutes : [];
-data.students = Array.isArray(data.students) ? data.students : [];
-data.referees = Array.isArray(data.referees) ? data.referees : [];
+  data.institutes = Array.isArray(data.institutes) ? data.institutes : [];
+  data.students = Array.isArray(data.students) ? data.students : [];
+  data.referees = Array.isArray(data.referees) ? data.referees : [];
 
   const stats = allStats();
   const categorySummary = ['INDIVIDUAL', 'FIGHT'].map(category => {
     const count = data.students.filter(student => participantEvents(student).includes(category)).length;
     return `<div class="activity-item"><span class="activity-mark">${category === 'FIGHT' ? '✳' : '◎'}</span><span><strong>${category}</strong><small>${count} participants registered</small></span><span class="activity-time">${stats.total ? Math.round(count / stats.total * 100) : 0}%</span></div>`;
   }).join('');
-  const recent = data.students.slice().sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
-  return `${pageHeading('Event control', 'District Silambam Match', 'A clear view of registrations and tournament readiness.', `<button class="btn ${data.registrationOpen ? 'btn-outline' : 'btn-primary'}" data-action="toggle-registration">${data.registrationOpen ? 'Close registration' : 'Reopen registration'}</button>`) }
+  const recent = data.students.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4);
+  return `${pageHeading('Event control', 'District Silambam Match', 'A clear view of registrations and tournament readiness.', `<button class="btn ${data.registrationOpen ? 'btn-outline' : 'btn-primary'}" data-action="toggle-registration">${data.registrationOpen ? 'Close registration' : 'Reopen registration'}</button>`)}
     <div class="banner"><div class="banner-copy"><span class="banner-symbol">${data.registrationOpen ? '◉' : 'Ⅱ'}</span><div><strong>Registration ${data.registrationOpen ? 'is open' : 'is closed'}</strong><small>${data.registrationOpen ? 'Institutes can add and update participant records.' : 'Institute changes are paused. Organiser access remains active.'}</small></div></div><span class="role-tag">24 OCT 2026</span></div>
     <section class="stat-grid">${statCard('Institutes', data.institutes.length, 'Academies in the district', '▦')}${statCard('Participants', stats.total, 'Registered entries', '◉')}${statCard('Individual', stats.individual, 'Registered entries', '◎')}${statCard('Referees', data.referees.length, 'Across all registered academies', '⌖')}</section>
     <div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>Latest registrations</h2><button class="btn btn-quiet" data-page="participants">Review participants →</button></div><div class="panel-body">${activityList(recent, true)}</div></section><section class="panel"><div class="panel-head"><h2>Category mix</h2><small>${stats.total} total</small></div><div class="panel-body"><div class="activity-list">${categorySummary}</div><div class="quick-links" style="margin-top:13px"><button class="quick-link" data-page="pitches"><span><strong>Pitch readiness</strong><small>All registered participants are available for pitch review</small></span><span class="quick-arrow">→</span></button><button class="quick-link" data-page="institutes"><span><strong>Institute directory</strong><small>${data.institutes.length} academy accounts</small></span><span class="quick-arrow">→</span></button></div></div></section></div>`;
@@ -655,18 +655,42 @@ function renderParticipants() {
   return `${pageHeading(organiser ? 'Event roster' : 'Academy roster', 'Participants', description, addButton)}
     ${organiser ? `<div class="summary-row"><div class="mini-stat"><span>All entries</span><strong>${students.length}</strong></div><div class="mini-stat"><span>Individual</span><strong>${allStats(students).individual}</strong></div><div class="mini-stat"><span>Fight</span><strong>${allStats(students).fight}</strong></div><div class="mini-stat"><span>Both Events</span><strong>${allStats(students).both}</strong></div></div>` : (!data.registrationOpen ? `<div class="note" style="margin-bottom:15px">Registration is closed. You can view existing entries, but cannot add, edit or delete participants.</div>` : '')}
     <div class="toolbar"><input type="search" id="participant-search" value="${esc(searchText)}" placeholder="Search participant..." aria-label="Search participant"><select id="category-filter" aria-label="Filter by event"><option value="ALL">All</option><option value="INDIVIDUAL" ${categoryFilter === 'INDIVIDUAL' ? 'selected' : ''}>Individual</option><option value="FIGHT" ${categoryFilter === 'FIGHT' ? 'selected' : ''}>Fight</option></select><select id="age-group-filter" aria-label="Filter by age group"><option value="ALL">All ages</option>${data.ageGroups.map(group => `<option value="${esc(group.label)}" ${ageGroupFilter === group.label ? 'selected' : ''}>${esc(group.label)}</option>`).join('')}</select>${organiser ? `<select id="institute-filter" aria-label="Filter by institute"><option value="ALL">All institutes</option>${data.institutes.map(item => `<option value="${esc(item.id)}" ${instituteFilter === item.id ? 'selected' : ''}>${esc(item.academyName)}</option>`).join('')}</select>` : ''}<span class="result-count">${visible.length} of ${students.length} participants</span></div>
-    <section class="panel"><div class="table-wrap"><table><thead>${studentTableHead(organiser)}</thead><tbody id="participants-body">${visible.length ? visible.map(student => studentRow(student, organiser)).join('') : `<tr><td colspan="${organiser ? 8 : 6}">${emptyState('No matching participants', 'Try another search or adjust the filters.')}</td></tr>`}</tbody></table></div></section>`;
+    <section class="panel"><div class="table-wrap"><table><thead>${studentTableHead(organiser)}</thead><tbody id="participants-body">${visible.length ? visible.map(student => studentRow(student, organiser)).join('') : `<tr><td colspan="${organiser ? 9 : 7}">${emptyState('No matching participants', 'Try another search or adjust the filters.')}</td></tr>`}</tbody></table></div></section>`;
 }
-function studentTableHead(organiser) { return `<tr><th>Participant ID</th><th>Name</th><th>Age</th><th>Weight</th><th>Events</th>${organiser ? '<th>Academy</th><th>Master Name</th>' : ''}<th>Actions</th></tr>`; }
+function studentTableHead(organiser) {
+  return `<tr>
+    <th>Participant ID</th>
+    <th>Name</th>
+    <th>Age</th>
+    <th>Gender</th>
+    <th>Weight</th>
+    <th>Events</th>
+    ${organiser ? '<th>Academy</th><th>Master Name</th>' : ''}
+    <th>Actions</th>
+  </tr>`;
+}
+
 function studentRow(student, organiser) {
   const owner = instituteById(student.instituteId);
   const age = participantAge(student);
   const locked = !organiser && !data.registrationOpen;
+
   const action = organiser
     ? `<button class="btn btn-quiet" data-action="edit-student" data-id="${student.id}">View</button><button class="btn btn-quiet" data-action="edit-student" data-id="${student.id}">Edit</button><button class="btn btn-quiet" data-action="delete-student" data-id="${student.id}">Delete</button>`
     : `<button class="btn btn-quiet" data-action="edit-student" data-id="${student.id}" ${locked ? 'disabled' : ''}>Edit</button><button class="btn btn-quiet" data-action="delete-student" data-id="${student.id}" ${locked ? 'disabled' : ''}>Delete</button>`;
-  return `<tr><td><span class="code">${student.id}</span></td><td class="cell-primary">${esc(student.name)}</td><td>${age ?? '—'}</td><td>${weightLabel(student)}</td><td>${eventLabel(student)}</td>${organiser ? `<td>${esc(owner?.academyName || '—')}</td><td>${esc(owner?.masterName || '—')}</td>` : ''}<td class="actions-cell">${action}</td></tr>`;
+
+  return `<tr>
+    <td><span class="code">${esc(student.id)}</span></td>
+    <td class="cell-primary">${esc(student.name)}</td>
+    <td>${age ?? '—'}</td>
+    <td>${esc(student.gender || '—')}</td>
+    <td>${weightLabel(student)}</td>
+    <td>${eventLabel(student)}</td>
+    ${organiser ? `<td>${esc(owner?.academyName || '—')}</td><td>${esc(owner?.masterName || '—')}</td>` : ''}
+    <td class="actions-cell">${action}</td>
+  </tr>`;
 }
+
 
 function renderReferees() {
   const organiser = isOrganiser();
@@ -719,15 +743,81 @@ function renderModal() {
 function modalFrame(title, desc, contents, wide = false) {
   return `<div class="modal-backdrop" data-action="backdrop-close"><section class="modal ${wide ? 'modal-wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${title}</h2><p>${desc}</p></div><button type="button" class="modal-close" data-action="close-modal" aria-label="Close dialog">×</button></div>${contents}</section></div>`;
 }
+
 function studentModal(id) {
   const existing = data.students.find(item => item.id === id);
-  if (existing && !isOrganiser() && existing.instituteId !== currentInstitute()?.id) return '';
+
+  if (
+    existing &&
+    !isOrganiser() &&
+    existing.instituteId !== currentInstitute()?.id
+  ) return '';
+
   const locked = !isOrganiser() && !data.registrationOpen;
   const title = existing ? 'Edit participant' : 'Add participant';
   const checkedEvents = participantEvents(existing || {});
-  const content = `<form id="student-form" class="modal-form" data-id="${existing?.id || ''}"><div class="form-grid"><div class="field"><label>Participant ID</label><div class="readonly-field">${existing?.id || nextStudentCode()} · automatic</div></div><div class="field"><label for="student-age">Age</label><input id="student-age" name="age" type="number" min="0" max="99" required value="${existing ? participantAge(existing) ?? '' : ''}" placeholder="Age"></div><div class="field full"><label for="student-name">Name</label><input id="student-name" name="name" required maxlength="100" value="${esc(existing?.name || '')}" placeholder="Full name"></div><div class="field full"><label for="student-weight">Weight (optional)</label><input id="student-weight" name="weight" maxlength="30" value="${esc(existing?.weight || '')}" placeholder="e.g. 41-45 KG"></div><div class="field full"><label>Events</label><div class="event-options"><label><input type="checkbox" name="events" value="INDIVIDUAL" ${checkedEvents.includes('INDIVIDUAL') ? 'checked' : ''}> Individual</label><label><input type="checkbox" name="events" value="FIGHT" ${checkedEvents.includes('FIGHT') ? 'checked' : ''}> Fight</label></div></div></div><div class="modal-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button class="btn btn-primary" type="submit" ${locked ? 'disabled' : ''}>${existing ? 'Save changes' : 'Confirm'}</button></div></form>`;
-  return modalFrame(title, existing ? `${existing.id} · ${isOrganiser() ? 'Organiser edit' : 'Update academy record'}` : 'Register a participant for the district match.', content);
+
+  const content = `<form id="student-form" class="modal-form" data-id="${existing?.id || ''}">
+    <div class="form-grid">
+      <div class="field">
+        <label>Participant ID</label>
+        <div class="readonly-field">${existing?.id || nextStudentCode()} · automatic</div>
+      </div>
+
+      <div class="field">
+        <label for="student-age">Age</label>
+        <input id="student-age" name="age" type="number" min="0" max="99" required value="${existing ? participantAge(existing) ?? '' : ''}" placeholder="Age">
+      </div>
+
+      <div class="field full">
+        <label for="student-name">Name</label>
+        <input id="student-name" name="name" required maxlength="100" value="${esc(existing?.name || '')}" placeholder="Full name">
+      </div>
+
+      <div class="field">
+        <label for="student-gender">Gender</label>
+        <select id="student-gender" name="gender" required>
+          <option value="">Select gender</option>
+          <option value="MALE" ${existing?.gender === 'MALE' ? 'selected' : ''}>Male</option>
+          <option value="FEMALE" ${existing?.gender === 'FEMALE' ? 'selected' : ''}>Female</option>
+        </select>
+      </div>
+
+      <div class="field full">
+        <label for="student-weight">Weight (optional)</label>
+        <input id="student-weight" name="weight" maxlength="30" value="${esc(existing?.weight || '')}" placeholder="e.g. 41-45 KG">
+      </div>
+
+      <div class="field full">
+        <label>Events</label>
+        <div class="event-options">
+          <label>
+            <input type="checkbox" name="events" value="INDIVIDUAL" ${checkedEvents.includes('INDIVIDUAL') ? 'checked' : ''}>
+            Individual
+          </label>
+          <label>
+            <input type="checkbox" name="events" value="FIGHT" ${checkedEvents.includes('FIGHT') ? 'checked' : ''}>
+            Fight
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button>
+      <button class="btn btn-primary" type="submit" ${locked ? 'disabled' : ''}>${existing ? 'Save changes' : 'Confirm'}</button>
+    </div>
+  </form>`;
+
+  return modalFrame(
+    title,
+    existing
+      ? `${existing.id} · ${isOrganiser() ? 'Organiser edit' : 'Update academy record'}`
+      : 'Register a participant for the district match.',
+    content
+  );
 }
+
 function instituteModal(id = null, profileMode = false) {
   const existing = data.institutes.find(item => item.id === id);
   if (profileMode && existing?.id !== currentInstitute()?.id) return '';
@@ -796,16 +886,42 @@ function generatePitches() {
 }
 
 function downloadCsv(filename, headers, rows) {
-  const content = '\ufeff' + [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(link.href);
-  toast(`${filename} downloaded.`);
+  if (!window.XLSX) {
+    toast('Excel library not loaded. Please refresh and try again.', true);
+    return;
+  }
+
+  const worksheetData = [
+    headers,
+    ...rows
+  ];
+
+  const worksheet = window.XLSX.utils.aoa_to_sheet(worksheetData);
+
+  // Make the first row bold
+  worksheet['!cols'] = headers.map((header, index) => {
+    const maxLength = Math.max(
+      String(header ?? '').length,
+      ...rows.map(row => String(row[index] ?? '').length)
+    );
+    return { wch: Math.min(maxLength + 2, 35) };
+  });
+
+  const workbook = window.XLSX.utils.book_new();
+
+  window.XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    'VETTAI Data'
+  );
+
+  const excelFilename = filename.replace(/\.csv$/i, '') + '.xlsx';
+
+  window.XLSX.writeFile(workbook, excelFilename);
+
+  toast(`${excelFilename} downloaded.`);
 }
+
 function exportData(type, instituteId = null) {
   if (type === 'students' || type === 'individual' || type === 'fight') {
     let students = instituteId ? instituteStudents(instituteId) : data.students;
@@ -846,46 +962,46 @@ document.addEventListener('click', event => {
   }
   const actionButton = event.target.closest('[data-action]');
 
-  
+
 
   if (!actionButton) return;
   const action = actionButton.dataset.action;
 
   if (action === 'show-signup') {
-  authView = 'signup';
-  render();
-  return;
-}
+    authView = 'signup';
+    render();
+    return;
+  }
 
-if (action === 'academy-registration') {
-  authView = 'login';
-  render();
-  return;
-}
+  if (action === 'academy-registration') {
+    authView = 'login';
+    render();
+    return;
+  }
 
 
-if (action === 'back-to-registration') {
-  authView = 'registration';
-  render();
-  return;
-}
+  if (action === 'back-to-registration') {
+    authView = 'registration';
+    render();
+    return;
+  }
 
   if (action === 'show-signup') { authView = 'signup'; render(); return; }
   if (action === 'show-login') { authView = 'login'; render(); return; }
 
   if (action === 'self-registration') {
-  window.location.href = 'https://forms.gle/ythS4AWjPrLGaEwt9'; //g-form link
-  return;
-}
+    window.location.href = 'https://forms.gle/ythS4AWjPrLGaEwt9'; //g-form link
+    return;
+  }
 
 
 
-// if (action === 'academy-registration') {
-//   console.log('Academy button clicked');
-//   authView = 'login';
-//   render();
-//   return;
-// }
+  // if (action === 'academy-registration') {
+  //   console.log('Academy button clicked');
+  //   authView = 'login';
+  //   render();
+  //   return;
+  // }
 
   const button = actionButton;
   if (action === 'demo-login') login(button.dataset.role, button.dataset.role === 'INSTITUTE' ? 'INS001' : null);
@@ -902,18 +1018,18 @@ if (action === 'back-to-registration') {
   else if (action === 'add-referee') { if (!data.registrationOpen) toast('Registration is closed.', true); else { modalState = { type: 'referee' }; renderModal(); } }
   else if (action === 'edit-referee') { modalState = { type: 'referee', id: button.dataset.id }; renderModal(); }
   else if (action === 'delete-referee') {
-  deleteRefereeFromSupabase(supabaseClient, currentInstitute()?.id, button.dataset.id)
-    .then(() => {
-      data.referees = data.referees.filter(referee => referee.id !== button.dataset.id);
-      persist();
-      render();
-      toast('Referee deleted successfully.');
-    })
-    .catch(error => {
-      console.error('Referee delete failed:', error);
-      toast('Could not delete referee. Check console.', true);
-    });
-}
+    deleteRefereeFromSupabase(supabaseClient, currentInstitute()?.id, button.dataset.id)
+      .then(() => {
+        data.referees = data.referees.filter(referee => referee.id !== button.dataset.id);
+        persist();
+        render();
+        toast('Referee deleted successfully.');
+      })
+      .catch(error => {
+        console.error('Referee delete failed:', error);
+        toast('Could not delete referee. Check console.', true);
+      });
+  }
   else if (action === 'view-referee') { modalState = { type: 'referee-view', id: button.dataset.id }; renderModal(); }
   else if (action === 'view-pitch') { modalState = { type: 'pitch-view', id: button.dataset.id }; renderModal(); }
   else if (action === 'toggle-registration') toggleRegistration();
@@ -941,12 +1057,12 @@ document.addEventListener('submit', async event => {
     const institute = { id: academy.id, loginId: academy.academy_code || academy.id, academyName: academy.academy_name, masterName: academy.master_name, phone: academy.phone, email: academy.email };
     if (!data.institutes.some(x => x.id === institute.id)) data.institutes.push(institute);
     session = { role: 'INSTITUTE', instituteId: institute.id, institute, userId: user.id };
-    
-authView = 'login';
-activePage = 'participants';
-render();
-await loadParticipantsFromSupabase();
-await loadRefereesFromSupabase();
+
+    authView = 'login';
+    activePage = 'participants';
+    render();
+    await loadParticipantsFromSupabase();
+    await loadRefereesFromSupabase();
 
   } else if (event.target.id === 'academy-signup-form') {
     event.preventDefault();
@@ -955,7 +1071,7 @@ await loadRefereesFromSupabase();
     if (!values) return;
     if (!values.email) { toast('Email address is required.', true); return; }
     const { data: signUpData, error } = await signUpAcademy(supabaseClient, values);
-    if (error) { const n=form.querySelector('[data-error-for="email"]'); if(n) n.textContent=error.message; toast(error.message, true); return; }
+    if (error) { const n = form.querySelector('[data-error-for="email"]'); if (n) n.textContent = error.message; toast(error.message, true); return; }
     signupCreatedId = signUpData.user?.id || null;
     authView = 'signup-success'; render();
   } else if (event.target.id === 'student-form') {
@@ -963,74 +1079,99 @@ await loadRefereesFromSupabase();
     if (!data.registrationOpen && !isOrganiser()) { toast('Registration is closed.', true); closeModal(); return; }
     const form = new FormData(event.target);
     const events = form.getAll('events').map(String);
-    const values = { name: String(form.get('name') || '').trim(), age: Number(form.get('age')), weight: String(form.get('weight') || '').trim(), events, category: events.length === 2 ? 'BOTH' : events[0], instituteId: event.target.dataset.id ? data.students.find(student => student.id === event.target.dataset.id)?.instituteId : currentInstitute()?.id };
-    if (!values.name || !Number.isInteger(values.age) || values.age < 0 || values.age > 99 || !events.length || !values.instituteId) { toast('Enter a name and valid age, then select at least one event.', true); return; }
-
-const existing = data.students.find(
-  student => student.id === event.target.dataset.id
-);
-
-if (existing) {
-  const { data: updated, error } = await supabaseClient
-    .from('participants')
-    .update(participantPayload(values))
-    .eq('participant_code', existing.id)
-    .eq('academy_id', existing.instituteId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Participant update failed:', error);
-    toast(`Update failed: ${error.message}`, true);
-    return;
-  }
-
-  Object.assign(existing, {
-    name: updated.name,
-    age: updated.age,
-    weight: updated.weight ?? '',
-    events: values.events,
-    category: values.category
-  });
-
-  invalidatePitches();
-  modalState = null;
-  render();
-  toast('Participant updated in Supabase.');
+    const values = {
+  name: String(form.get('name') || '').trim(),
+  age: Number(form.get('age')),
+  gender: String(form.get('gender') || '').toUpperCase(),
+  weight: String(form.get('weight') || '').trim(),
+  events,
+  category: events.length === 2 ? 'BOTH' : events[0],
+  instituteId: event.target.dataset.id
+    ? data.students.find(student => student.id === event.target.dataset.id)?.instituteId
+    : currentInstitute()?.id
+};
+    if (
+  !values.name ||
+  !Number.isInteger(values.age) ||
+  values.age < 0 ||
+  values.age > 99 ||
+  !['MALE', 'FEMALE'].includes(values.gender) ||
+  !events.length ||
+  !values.instituteId
+) {
+  toast('Enter a valid name, age and gender, then select at least one event.', true);
   return;
 }
 
-const participantCode = nextStudentCode();
+    const existing = data.students.find(
+      student => student.id === event.target.dataset.id
+    );
 
-const { data: savedParticipant, error } = await supabaseClient
+    if (existing) {
+const { data: updated, error } = await supabaseClient
   .from('participants')
-  .insert(newParticipantPayload(values, participantCode))
-  .select()
-  .single();
+  .update(participantPayload(values))
+  .eq('id', existing.dbId)
+  .select('id, participant_code, name, age, weight, events, gender')
+  .maybeSingle();
 
-if (error) {
-  console.error('Participant save failed:', error);
-  toast(`Supabase save failed: ${error.message}`, true);
-  return;
-}
 
-data.students.push({
-  id: savedParticipant.participant_code,
-  dbId: savedParticipant.id,
-  instituteId: savedParticipant.academy_id,
-  name: savedParticipant.name,
-  age: savedParticipant.age,
-  weight: savedParticipant.weight ?? '',
-  events: values.events,
-  category: values.category,
-  createdAt: new Date().toISOString().slice(0, 10)
-});
+      if (error) {
+        console.error('Participant update failed:', error);
+        toast(`Update failed: ${error.message}`, true);
+        return;
+      }
 
-data.studentSequence++;
-invalidatePitches();
-modalState = null;
-render();
-toast('Participant saved to Supabase successfully.');
+      Object.assign(existing, {
+        name: updated.name,
+        age: updated.age,
+        gender: updated.gender || values.gender,
+        weight: updated.weight ?? '',
+        events: values.events,
+        category: values.category
+      });
+
+      
+
+      invalidatePitches();
+      modalState = null;
+      render();
+      toast('Participant updated in Supabase.');
+      return;
+    }
+
+    const participantCode = nextStudentCode();
+
+    const { data: savedParticipant, error } = await supabaseClient
+      .from('participants')
+      .insert(newParticipantPayload(values, participantCode))
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Participant save failed:', error);
+      toast(`Supabase save failed: ${error.message}`, true);
+      return;
+    }
+
+    data.students.push({
+      id: savedParticipant.participant_code,
+      dbId: savedParticipant.id,
+      instituteId: savedParticipant.academy_id,
+      name: savedParticipant.name,
+      age: savedParticipant.age,
+      gender: savedParticipant.gender || values.gender,
+      weight: savedParticipant.weight ?? '',
+      events: values.events,
+      category: values.category,
+      createdAt: new Date().toISOString().slice(0, 10)
+    });
+
+    data.studentSequence++;
+    invalidatePitches();
+    modalState = null;
+    render();
+    toast('Participant saved to Supabase successfully.');
 
   } else if (event.target.id === 'institute-form') {
     event.preventDefault();
@@ -1049,58 +1190,58 @@ toast('Participant saved to Supabase successfully.');
     }
     persist(); modalState = null; render(); toast(existing ? 'Academy profile updated.' : 'Institute created.');
   } else if (event.target.id === 'referee-form') {
-  event.preventDefault();
+    event.preventDefault();
 
-  if (!data.registrationOpen && !isOrganiser()) {
-    toast('Registration is closed.', true);
-    closeModal();
-    return;
-  }
-
-  try {
-    const form = new FormData(event.target);
-    const id = event.target.dataset.id;
-    const existing = data.referees.find(item => item.id === id);
-    const values = refereeValues(form);
-    const academyId = existing?.instituteId || currentInstitute()?.id;
-
-    if (!academyId) {
-      throw new Error('Academy ID not found.');
+    if (!data.registrationOpen && !isOrganiser()) {
+      toast('Registration is closed.', true);
+      closeModal();
+      return;
     }
 
-    let saved;
+    try {
+      const form = new FormData(event.target);
+      const id = event.target.dataset.id;
+      const existing = data.referees.find(item => item.id === id);
+      const values = refereeValues(form);
+      const academyId = existing?.instituteId || currentInstitute()?.id;
 
-    if (existing) {
-      saved = await updateReferee(
-        supabaseClient,
-        academyId,
-        id,
-        values
-      );
+      if (!academyId) {
+        throw new Error('Academy ID not found.');
+      }
 
-      data.referees = data.referees.map(item =>
-        item.id === id ? saved : item
-      );
-    } else {
-      saved = await createReferee(
-        supabaseClient,
-        academyId,
-        values
-      );
+      let saved;
 
-      data.referees.push(saved);
+      if (existing) {
+        saved = await updateReferee(
+          supabaseClient,
+          academyId,
+          id,
+          values
+        );
+
+        data.referees = data.referees.map(item =>
+          item.id === id ? saved : item
+        );
+      } else {
+        saved = await createReferee(
+          supabaseClient,
+          academyId,
+          values
+        );
+
+        data.referees.push(saved);
+      }
+
+      modalState = null;
+      render();
+      toast(existing
+        ? 'Referee updated in Supabase.'
+        : 'Referee saved to Supabase.');
+    } catch (error) {
+      console.error('Referee save failed:', error);
+      toast(`Supabase save failed: ${error.message}`, true);
     }
-
-    modalState = null;
-    render();
-    toast(existing
-      ? 'Referee updated in Supabase.'
-      : 'Referee saved to Supabase.');
-  } catch (error) {
-    console.error('Referee save failed:', error);
-    toast(`Supabase save failed: ${error.message}`, true);
-  } 
-}else if (event.target.id === 'age-groups-form') {
+  } else if (event.target.id === 'age-groups-form') {
     event.preventDefault();
     const form = new FormData(event.target);
     const limits = data.ageGroups.map((group, index) => Number(form.get(`max-${index}`)));
