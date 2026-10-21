@@ -1025,24 +1025,63 @@ function pitchViewModal(number) {
   };
 }));
 
-
+//pitch order
   const pitchGender = String(pitch.gender || '').toUpperCase();
 
-  const students = pitch.students
+const students = pitch.students
   .map(id => data.students.find(
     student => String(student.dbId || student.id) === String(id)
   ))
   .filter(Boolean);
 
+const ageGroups = new Map();
 
-  const rows = students.map(student => `
-    <tr>
-      <td>${esc(student.id)}</td>
-      <td>${esc(student.name)}</td>
-      <td>${participantAge(student) ?? '—'}</td>
-      <td>${esc(instituteById(student.instituteId)?.academyName || '—')}</td>
-    </tr>
-  `).join('');
+students.forEach(student => {
+  const age = participantAge(student);
+  const key = age == null ? 'unknown' : String(age);
+
+  if (!ageGroups.has(key)) ageGroups.set(key, []);
+  ageGroups.get(key).push(student);
+});
+
+const sortedAges = [...ageGroups.keys()].sort((a, b) => {
+  if (a === 'unknown') return 1;
+  if (b === 'unknown') return -1;
+  return Number(a) - Number(b);
+});
+
+const orderedStudents = [];
+
+sortedAges.forEach(age => {
+  const byAcademy = new Map();
+
+  ageGroups.get(age).forEach(student => {
+    const academy = instituteById(student.instituteId)?.academyName || 'Unknown';
+    if (!byAcademy.has(academy)) byAcademy.set(academy, []);
+    byAcademy.get(academy).push(student);
+  });
+
+  const academies = [...byAcademy.keys()];
+  let remaining = true;
+
+  while (remaining) {
+    remaining = false;
+
+    academies.forEach(academy => {
+      const student = byAcademy.get(academy).shift();
+
+      if (student) {
+        orderedStudents.push(student);
+        remaining = true;
+      }
+    });
+  }
+});
+
+
+const rows = orderedStudents.map(student =>
+  `<tr><td>${esc(student.id)}</td><td>${esc(student.name)}</td><td>${participantAge(student) ?? '—'}</td><td>${esc(instituteById(student.instituteId)?.academyName || '—')}</td></tr>`
+).join('');
 
   const genderLabel =
     pitchGender === 'MALE' ? 'Male' :
