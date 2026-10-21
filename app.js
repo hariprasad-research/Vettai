@@ -32,21 +32,18 @@ const NAV_ITEMS = [
 ];
 
 
+
 const seed = {
   registrationOpen: true,
   institutes: [],
   students: [],
   referees: [],
   studentSequence: 1,
-  ageGroups: [
-    { label: 'Under 10', min: 0, max: 10 },
-    { label: 'Under 12', min: 11, max: 12 },
-    { label: 'Under 14', min: 13, max: 14 },
-    { label: 'Under 16', min: 15, max: 16 },
-    { label: 'Open', min: 17, max: 99 }
-  ],
-  pitches: []
+  ageGroups: [],
+  pitches: [],
+  pitchWeightGrouping: false
 };
+
 
 
 let data = loadData();
@@ -79,8 +76,9 @@ function loadData() {
         referees: [],
         ageGroups: Array.isArray(saved.ageGroups)
           ? saved.ageGroups
-          : structuredClone(seed.ageGroups),
-        pitches: Array.isArray(saved.pitches) ? saved.pitches : []
+          : [],
+        pitches: Array.isArray(saved.pitches) ? saved.pitches : [],
+        pitchWeightGrouping: Boolean(saved.pitchWeightGrouping)
       };
     }
   } catch (error) {
@@ -89,6 +87,7 @@ function loadData() {
 
   return structuredClone(seed);
 }
+
 
 
 
@@ -208,6 +207,18 @@ async function restoreAuthSession() {
           .select('*')
           .order('created_at', { ascending: true });
 
+
+          //temp 
+          console.table(
+  (rows || []).map(row => ({
+    id: row.participant_code,
+    name: row.name,
+    academyId: row.academy_id,
+    gender: row.gender,
+    oldGender: row.Gender
+  }))
+);
+
         if (error) throw error;
 
         data.students = (rows || []).map(participantFromRow);
@@ -291,7 +302,14 @@ function persistSession() { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s
 function instituteById(id) { return data.institutes.find(item => item.id === id); }
 function currentInstitute() { return session?.role === 'INSTITUTE' ? (instituteById(session.instituteId) || session.institute || null) : null; }
 function isOrganiser() { return session?.role === 'ORGANISER'; }
-function participantAge(student) { return Number.isFinite(Number(student.age)) && student.age !== '' ? Number(student.age) : ageAtMatch(student.dob); }
+function participantAge(student) {
+  if (!student || typeof student !== 'object') return null;
+  if (student.age !== undefined && student.age !== null && student.age !== '') {
+    const age = Number(student.age);
+    if (Number.isFinite(age)) return age;
+  }
+  return student.dob ? ageAtMatch(student.dob) : null;
+}
 function participantEvents(student) {
   if (Array.isArray(student.events) && student.events.length) return student.events;
   if (student.category === 'BOTH') return ['INDIVIDUAL', 'FIGHT'];
@@ -676,8 +694,8 @@ function studentRow(student, organiser) {
   const locked = !organiser && !data.registrationOpen;
 
   const action = organiser
-    ? `<button class="btn btn-quiet" data-action="edit-student" data-id="${student.id}">View</button><button class="btn btn-quiet" data-action="edit-student" data-id="${student.id}">Edit</button><button class="btn btn-quiet" data-action="delete-student" data-id="${student.id}">Delete</button>`
-    : `<button class="btn btn-quiet" data-action="edit-student" data-id="${student.id}" ${locked ? 'disabled' : ''}>Edit</button><button class="btn btn-quiet" data-action="delete-student" data-id="${student.id}" ${locked ? 'disabled' : ''}>Delete</button>`;
+    ? `<button class="btn btn-quiet" data-action="edit-student" data-id="${student.dbId || student.id}">View</button><button class="btn btn-quiet" data-action="edit-student" data-id="${student.dbId || student.id}">Edit</button><button class="btn btn-quiet" data-action="delete-student" data-id="${student.id}">Delete</button>`
+    : `<button class="btn btn-quiet" data-action="edit-student" data-id="${student.dbId || student.id}" ${locked ? 'disabled' : ''}>Edit</button><button class="btn btn-quiet" data-action="delete-student" data-id="${student.id}" ${locked ? 'disabled' : ''}>Delete</button>`;
 
   return `<tr>
     <td><span class="code">${esc(student.id)}</span></td>
@@ -703,12 +721,93 @@ function renderReferees() {
     <section class="panel"><div class="panel-head"><h2>Referee directory</h2><small>${list.length} records</small></div><div class="table-wrap"><table><thead><tr><th>Referee Name</th><th>Age</th><th>Academy Name</th><th>Phone</th><th>Actions</th></tr></thead><tbody>${body || `<tr><td colspan="5">${emptyState('No referees listed', 'Add a referee to your academy roster.')}</td></tr>`}</tbody></table></div></section>`;
 }
 
+
 function renderPitches() {
-  const rows = data.pitches.map(pitch => `<tr><td><span class="code">PITCH ${String(pitch.number).padStart(2, '0')}</span></td><td>${esc(eventLabel({ events: [pitch.event || pitch.category] }))}</td><td>${esc(pitch.ageGroup)}</td><td>${esc(pitch.weightGroup || '—')}</td><td>${pitch.students.length}</td><td><button class="btn btn-quiet" data-action="view-pitch" data-id="${pitch.number}">View</button></td></tr>`).join('');
-  return `${pageHeading('Competition setup', 'Pitch Management', 'Generate pitch rosters using event and match-day age groups.', `<button class="btn btn-primary" data-action="generate-pitches">Generate Pitches</button>`)}
-    <div class="toolbar"><label class="note"><input id="pitch-weight-grouping" type="checkbox" ${data.pitchWeightGrouping ? 'checked' : ''}> Group pitches by weight</label></div>
-    <section class="panel"><div class="table-wrap"><table><thead><tr><th>Pitch Number</th><th>Event</th><th>Age Group</th><th>Weight Group</th><th>Participant Count</th><th>Actions</th></tr></thead><tbody>${rows || `<tr><td colspan="6">${emptyState('No pitches generated', 'Generate pitches from the registered participants.')}</td></tr>`}</tbody></table></div></section>`;
+  
+  const categoryRows = data.ageGroups.map((group, index) => `
+    <tr>
+      <td>${esc(group.event === 'INDIVIDUAL' ? 'Individual' : 'Fight')}</td>
+      <td>${esc(group.label)}</td>
+      <td>${group.min}–${group.max} years</td>
+      <td>
+        <button class="btn btn-quiet"
+          data-action="edit-pitch-category"
+          data-index="${index}">Edit</button>
+        <button class="btn btn-quiet"
+          data-action="delete-pitch-category"
+          data-index="${index}">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+
+  const rows = data.pitches.map(pitch => `
+    <tr>
+      <td><span class="code">PITCH ${String(pitch.number).padStart(2, '0')}</span></td>
+      <td>${esc(eventLabel({ events: [pitch.event || pitch.category] }))}</td>
+      <td>${esc(pitch.ageGroup)}</td>
+      <td>${pitch.gender === 'MALE' ? 'Male' : pitch.gender === 'FEMALE' ? 'Female' : '—'}</td>
+      <td>${esc(pitch.weightGroup || '—')}</td>
+      <td>${pitch.students.length}</td>
+      <td>
+        <button class="btn btn-quiet" data-action="view-pitch" data-id="${pitch.number}">View</button>
+      </td>
+    </tr>
+  `).join('');
+
+  return `${pageHeading(
+    'Competition setup',
+    'Pitch Management',
+    'Generate pitch rosters using event, age groups and gender.',
+    
+`<button class="btn btn-quiet" data-action="add-pitch-category">+ Add Category</button>
+ ${data.pitches.length > 0 ? '<button class="btn btn-quiet" data-action="delete-generated-pitches">Delete Generated Pitches</button>' : ''}
+ <button class="btn btn-primary" data-action="generate-pitches">Generate Pitches</button>`
+
+  )}
+
+  
+    <section class="panel" style="margin-bottom: 16px;">
+      <div class="panel-header">
+        <h3>Saved Age Categories</h3>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Category Name</th>
+              <th>Age Range</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${categoryRows || `<tr><td colspan="4">No categories added yet.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Pitch Number</th>
+              <th>Event</th>
+              <th>Age Group</th>
+              <th>Gender</th>
+              <th>Weight Group</th>
+              <th>Participant Count</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td colspan="7">${emptyState('No pitches generated', 'Generate pitches from the registered participants.')}</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
 }
+
 
 function renderDownloads() {
   const cards = [
@@ -729,23 +828,90 @@ function renderInstituteProfile() {
     <section class="detail-banner"><div><h2>${esc(institute.academyName)}</h2><p>Institute ID · ${esc(institute.id)}</p><div class="detail-meta"><span>Master Name<strong>${esc(institute.masterName)}</strong></span><span>Phone<strong>${esc(institute.phone)}</strong></span><span>Email<strong>${esc(institute.email || '—')}</strong></span></div></div></section>`;
 }
 
+
 function renderModal() {
   const root = document.querySelector('#modal-root');
-  if (!modalState) { root.innerHTML = ''; return; }
+
+  if (!modalState) {
+    root.innerHTML = '';
+    return;
+  }
+
   const { type, id } = modalState;
+
   if (type === 'student') root.innerHTML = studentModal(id);
   else if (type === 'institute') root.innerHTML = instituteModal();
   else if (type === 'institute-edit') root.innerHTML = instituteModal(id, modalState.profileMode);
   else if (type === 'referee') root.innerHTML = refereeModal(id);
   else if (type === 'referee-view') root.innerHTML = refereeViewModal(id);
   else if (type === 'pitch-view') root.innerHTML = pitchViewModal(id);
-}
-function modalFrame(title, desc, contents, wide = false) {
-  return `<div class="modal-backdrop" data-action="backdrop-close"><section class="modal ${wide ? 'modal-wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${title}</h2><p>${desc}</p></div><button type="button" class="modal-close" data-action="close-modal" aria-label="Close dialog">×</button></div>${contents}</section></div>`;
+  else if (type === 'pitch-category') root.innerHTML = pitchCategoryModal();
 }
 
+function modalFrame(title, desc, contents, wide = false) {
+  return `<div class="modal-backdrop" data-action="backdrop-close"><section class="modal ${wide ? 'modal-wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><div><h2>${esc(title)}</h2><p>${desc}</p></div><button type="button" class="modal-close" data-action="close-modal" aria-label="Close dialog">×</button></div>${contents}</section></div>`;
+}
+
+function pitchCategoryModal() {
+  const editIndex = modalState?.editIndex;
+
+  const category =
+    editIndex !== undefined && editIndex !== null
+      ? data.ageGroups[editIndex]
+      : null;
+
+  const isEditing = Boolean(category);
+
+  return modalFrame(
+    isEditing ? 'Edit Pitch Category' : 'Add Pitch Category',
+    'Define the event and eligible age range.',
+    `<form id="pitch-category-form" class="form-stack">
+      <div class="field">
+        <label for="pitch-category-event">Event</label>
+        <select id="pitch-category-event" name="event" required>
+          <option value="INDIVIDUAL" ${category?.event === 'INDIVIDUAL' ? 'selected' : ''}>Individual</option>
+          <option value="FIGHT" ${category?.event === 'FIGHT' ? 'selected' : ''}>Fight</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="pitch-category-name">Category Name</label>
+        <input id="pitch-category-name" name="label" type="text"
+          value="${esc(category?.label || '')}"
+          placeholder="e.g. Under 10" required>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="pitch-category-min">Minimum Age</label>
+          <input id="pitch-category-min" name="min" type="number"
+            min="0" max="99" value="${category?.min ?? ''}" required>
+        </div>
+
+        <div class="field">
+          <label for="pitch-category-max">Maximum Age</label>
+          <input id="pitch-category-max" name="max" type="number"
+            min="0" max="99" value="${category?.max ?? ''}" required>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-quiet"
+          data-action="close-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+          ${isEditing ? 'Update Category' : 'Save Category'}
+        </button>
+      </div>
+    </form>`,
+    false
+  );
+}
+
+
 function studentModal(id) {
-  const existing = data.students.find(item => item.id === id);
+  const existing = data.students.find(
+  item => item.dbId === id || item.id === id
+);
 
   if (
     existing &&
@@ -757,7 +923,7 @@ function studentModal(id) {
   const title = existing ? 'Edit participant' : 'Add participant';
   const checkedEvents = participantEvents(existing || {});
 
-  const content = `<form id="student-form" class="modal-form" data-id="${existing?.id || ''}">
+  const content = `<form id="student-form" class="modal-form" data-id="${existing?.dbId || existing?.id || ''}">
     <div class="form-grid">
       <div class="field">
         <label>Participant ID</label>
@@ -822,13 +988,13 @@ function instituteModal(id = null, profileMode = false) {
   const existing = data.institutes.find(item => item.id === id);
   if (profileMode && existing?.id !== currentInstitute()?.id) return '';
   const instituteId = existing?.id || nextId(data.institutes, 'INS', 3);
-  const content = `<form id="institute-form" class="modal-form" data-id="${existing?.id || ''}" data-profile="${profileMode}"><div class="form-grid"><div class="field"><label>Institute ID</label><div class="readonly-field">${instituteId}</div></div>${existing ? '' : `<div class="field"><label for="institute-login">Institute login ID</label><input id="institute-login" name="loginId" required maxlength="30" value="${instituteId}"></div>`}<div class="field full"><label for="academy-name">Academy Name</label><input id="academy-name" name="academyName" required maxlength="120" value="${esc(existing?.academyName || '')}" placeholder="Silambam academy name"></div><div class="field"><label for="master-name">Master Name</label><input id="master-name" name="masterName" required maxlength="100" value="${esc(existing?.masterName || '')}" placeholder="Full name"></div><div class="field"><label for="institute-phone">Phone Number</label><input id="institute-phone" name="phone" type="tel" pattern="[0-9]{8,16}" required value="${esc(existing?.phone || '')}" placeholder="Contact number"></div><div class="field full"><label for="institute-email">Email</label><input id="institute-email" name="email" type="email" value="${esc(existing?.email || '')}" placeholder="Email address"></div>${existing ? '' : `<div class="field full"><label for="institute-password">Password</label><input id="institute-password" name="password" type="password" minlength="6" required placeholder="At least 6 characters"></div>`}</div><div class="modal-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button class="btn btn-primary" type="submit">${existing ? 'Save changes' : 'Create institute'}</button></div></form>`;
+  const content = `<form id="institute-form" class="modal-form" data-id="${existing?.dbId || existing?.id || ''}" data-profile="${profileMode}"><div class="form-grid"><div class="field"><label>Institute ID</label><div class="readonly-field">${instituteId}</div></div>${existing ? '' : `<div class="field"><label for="institute-login">Institute login ID</label><input id="institute-login" name="loginId" required maxlength="30" value="${instituteId}"></div>`}<div class="field full"><label for="academy-name">Academy Name</label><input id="academy-name" name="academyName" required maxlength="120" value="${esc(existing?.academyName || '')}" placeholder="Silambam academy name"></div><div class="field"><label for="master-name">Master Name</label><input id="master-name" name="masterName" required maxlength="100" value="${esc(existing?.masterName || '')}" placeholder="Full name"></div><div class="field"><label for="institute-phone">Phone Number</label><input id="institute-phone" name="phone" type="tel" pattern="[0-9]{8,16}" required value="${esc(existing?.phone || '')}" placeholder="Contact number"></div><div class="field full"><label for="institute-email">Email</label><input id="institute-email" name="email" type="email" value="${esc(existing?.email || '')}" placeholder="Email address"></div>${existing ? '' : `<div class="field full"><label for="institute-password">Password</label><input id="institute-password" name="password" type="password" minlength="6" required placeholder="At least 6 characters"></div>`}</div><div class="modal-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button class="btn btn-primary" type="submit">${existing ? 'Save changes' : 'Create institute'}</button></div></form>`;
   return modalFrame(existing ? 'Edit academy profile' : 'Create institute account', existing ? 'Update academy contact details.' : 'Add an academy to the event directory.', content, true);
 }
 function refereeModal(id) {
   const existing = data.referees.find(item => item.id === id);
   if (existing && !isOrganiser() && existing.instituteId !== currentInstitute()?.id) return '';
-  const content = `<form id="referee-form" class="modal-form" data-id="${existing?.id || ''}"><div class="form-grid"><div class="field full"><label for="referee-name">Referee name</label><input id="referee-name" name="name" required maxlength="100" value="${esc(existing?.name || '')}" placeholder="Full name"></div><div class="field"><label for="referee-age">Age</label><input id="referee-age" name="age" type="number" min="18" max="100" required value="${existing?.age || ''}" placeholder="Age"></div><div class="field"><label for="referee-phone">Phone number</label><input id="referee-phone" name="phone" type="tel" pattern="[0-9]{8,16}" required value="${esc(existing?.phone || '')}" placeholder="Contact number"></div><div class="field full"><label for="referee-academy">Academy name</label><input id="referee-academy" name="academyName" required maxlength="120" value="${esc(existing?.academyName || currentInstitute()?.academyName || '')}" placeholder="Academy"></div></div><div class="modal-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button class="btn btn-primary" type="submit">${existing ? 'Save changes' : 'Add referee'}</button></div></form>`;
+  const content = `<form id="referee-form" class="modal-form" data-id="${existing?.dbId || existing?.id || ''}"><div class="form-grid"><div class="field full"><label for="referee-name">Referee name</label><input id="referee-name" name="name" required maxlength="100" value="${esc(existing?.name || '')}" placeholder="Full name"></div><div class="field"><label for="referee-age">Age</label><input id="referee-age" name="age" type="number" min="18" max="100" required value="${existing?.age || ''}" placeholder="Age"></div><div class="field"><label for="referee-phone">Phone number</label><input id="referee-phone" name="phone" type="tel" pattern="[0-9]{8,16}" required value="${esc(existing?.phone || '')}" placeholder="Contact number"></div><div class="field full"><label for="referee-academy">Academy name</label><input id="referee-academy" name="academyName" required maxlength="120" value="${esc(existing?.academyName || currentInstitute()?.academyName || '')}" placeholder="Academy"></div></div><div class="modal-actions"><button type="button" class="btn btn-outline" data-action="close-modal">Cancel</button><button class="btn btn-primary" type="submit">${existing ? 'Save changes' : 'Add referee'}</button></div></form>`;
   return modalFrame(existing ? 'Edit referee' : 'Add referee', 'Referee contact for the district match.', content);
 }
 function refereeViewModal(id) {
@@ -838,14 +1004,82 @@ function refereeViewModal(id) {
   return modalFrame('Referee details', instituteById(referee.instituteId)?.academyName || 'Event referee', content);
 }
 
+
 function pitchViewModal(number) {
-  const pitch = data.pitches.find(item => String(item.number) === String(number));
+  const pitch = data.pitches.find(
+    item => String(item.number) === String(number)
+  );
+
   if (!pitch) return '';
-  const students = pitch.students.map(id => data.students.find(student => student.id === id)).filter(Boolean);
-  const rows = students.map(student => `<tr><td>${esc(student.id)}</td><td>${esc(student.name)}</td><td>${participantAge(student) ?? '—'}</td><td>${esc(instituteById(student.instituteId)?.academyName || '—')}</td></tr>`).join('');
-  const content = `<div class="modal-form"><div class="table-wrap"><table><thead><tr><th>Participant ID</th><th>Name</th><th>Age</th><th>Academy</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No participants assigned.</td></tr>'}</tbody></table></div><div class="modal-actions"><button type="button" class="btn btn-primary" data-action="close-modal">Done</button></div></div>`;
-  return modalFrame(`PITCH ${String(pitch.number).padStart(2, '0')} · ${esc(eventLabel({ events: [pitch.event || pitch.category] }))}`, `${esc(pitch.ageGroup)}${pitch.weightGroup ? ` · ${esc(pitch.weightGroup)}` : ''}`, content, true);
+
+  //temp 
+  console.log('Pitch gender check:', pitch.students.map(id => {
+  const student = data.students.find(item => item.id === id);
+
+  return {
+    id,
+    name: student?.name,
+    gender: student?.gender,
+    pitchGender: pitch.gender,
+    age: participantAge(student)
+  };
+}));
+
+
+  const pitchGender = String(pitch.gender || '').toUpperCase();
+
+  const students = pitch.students
+  .map(id => data.students.find(
+    student => String(student.dbId || student.id) === String(id)
+  ))
+  .filter(Boolean);
+
+
+  const rows = students.map(student => `
+    <tr>
+      <td>${esc(student.id)}</td>
+      <td>${esc(student.name)}</td>
+      <td>${participantAge(student) ?? '—'}</td>
+      <td>${esc(instituteById(student.instituteId)?.academyName || '—')}</td>
+    </tr>
+  `).join('');
+
+  const genderLabel =
+    pitchGender === 'MALE' ? 'Male' :
+    pitchGender === 'FEMALE' ? 'Female' : 'Gender not set';
+
+  const content = `
+    <div class="modal-form">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Participant ID</th>
+              <th>Name</th>
+              <th>Age</th>
+              <th>Academy</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="4">No matching participants. Regenerate pitches after checking participant details and age categories.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary"
+          data-action="close-modal">Done</button>
+      </div>
+    </div>
+  `;
+
+  return modalFrame(
+    `PITCH ${String(pitch.number).padStart(2, '0')} · ${esc(eventLabel({ events: [pitch.event || pitch.category] }))}`,
+    `${esc(pitch.ageGroup)} · ${genderLabel}${pitch.weightGroup ? ` · ${esc(pitch.weightGroup)}` : ''} · ${students.length} Participants`,
+    content,
+    true
+  );
 }
+
 
 function login(role, instituteId = null) {
   authView = 'login';
@@ -867,22 +1101,96 @@ function toggleRegistration() {
   render();
   toast(`Registration ${data.registrationOpen ? 'reopened' : 'closed'}.`);
 }
+
+
 function generatePitches() {
   const grouped = new Map();
+
+  // Use the database UUID to identify participants uniquely.
+  const participantKey = student =>
+    String(student.dbId || student.id);
+
   for (const student of data.students) {
-    const group = ageGroup(participantAge(student));
-    if (!group) continue;
+    const age = Number(participantAge(student));
+    if (!Number.isFinite(age)) continue;
+
+    const gender = String(student.gender || '').trim().toUpperCase();
+    if (!['MALE', 'FEMALE'].includes(gender)) continue;
+
+    // Match age groups to the correct event.
     for (const event of participantEvents(student)) {
-      const weightGroup = data.pitchWeightGrouping ? (student.weight || 'Weight not set') : '';
-      const key = `${event}|${group.label}|${weightGroup}`;
-      if (!grouped.has(key)) grouped.set(key, { event, category: event, ageGroup: group.label, weightGroup, students: [] });
-      grouped.get(key).students.push(student.id);
+      const categories = data.ageGroups.filter(group =>
+        group.event === event &&
+        age >= Number(group.min) &&
+        age <= Number(group.max)
+      );
+
+      for (const group of categories) {
+        const weightGroup = data.pitchWeightGrouping
+          ? String(student.weight || 'Weight not set').trim().toUpperCase()
+          : '';
+
+        const key = [
+          event,
+          group.label,
+          gender,
+          weightGroup
+        ].join('|');
+
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            event,
+            category: event,
+            ageGroup: group.label,
+            gender,
+            weightGroup,
+            students: []
+          });
+        }
+
+        const pitch = grouped.get(key);
+        const id = participantKey(student);
+
+        // Never add the same database participant twice.
+        if (!pitch.students.includes(id)) {
+          pitch.students.push(id);
+        }
+      }
     }
   }
-  data.pitches = [...grouped.values()].sort((a, b) => ({ INDIVIDUAL: 0, FIGHT: 1 }[a.event] ?? 99) - ({ INDIVIDUAL: 0, FIGHT: 1 }[b.event] ?? 99) || data.ageGroups.findIndex(group => group.label === a.ageGroup) - data.ageGroups.findIndex(group => group.label === b.ageGroup) || a.weightGroup.localeCompare(b.weightGroup)).map((pitch, index) => ({ ...pitch, number: index + 1 }));
+
+  const eventOrder = { INDIVIDUAL: 0, FIGHT: 1 };
+
+  data.pitches = [...grouped.values()]
+    .sort((a, b) =>
+      (eventOrder[a.event] ?? 99) -
+        (eventOrder[b.event] ?? 99) ||
+      data.ageGroups.findIndex(
+        g => g.event === a.event && g.label === a.ageGroup
+      ) -
+        data.ageGroups.findIndex(
+          g => g.event === b.event && g.label === b.ageGroup
+        ) ||
+      a.gender.localeCompare(b.gender) ||
+      a.weightGroup.localeCompare(b.weightGroup)
+    )
+    .map((pitch, index) => ({
+      ...pitch,
+      number: index + 1
+    }));
+
   persist();
   render();
-  toast(`${data.pitches.length} pitch${data.pitches.length === 1 ? '' : 'es'} generated from registered participants.`);
+
+  const totalParticipants = data.pitches.reduce(
+    (sum, pitch) => sum + pitch.students.length,
+    0
+  );
+
+  toast(
+    `${data.pitches.length} pitches generated. ` +
+    `${totalParticipants} pitch entries allocated.`
+  );
 }
 
 function downloadCsv(filename, headers, rows) {
@@ -937,7 +1245,18 @@ function exportData(type, instituteId = null) {
   } else if (type === 'referees') {
     downloadCsv('district-referees.csv', ['Name', 'Age', 'Academy', 'Phone', 'Institute ID'], data.referees.map(item => [item.name, item.age, item.academyName, item.phone, item.instituteId]));
   } else if (type === 'pitches') {
-    downloadCsv('district-pitches.csv', ['Pitch', 'Event', 'Age group', 'Weight group', 'Order', 'Participant ID', 'Name', 'Academy'], data.pitches.flatMap(pitch => pitch.students.map((id, index) => { const student = data.students.find(item => item.id === id); return [pitch.number, pitch.event || pitch.category, pitch.ageGroup, pitch.weightGroup || '', index + 1, id, student?.name, instituteById(student?.instituteId)?.academyName]; })));
+    downloadCsv('district-pitches.csv', ['Pitch', 'Event', 'Age group', 'Weight group', 'Order', 'Participant ID', 'Name', 'Academy'], data.pitches.flatMap(pitch => pitch.students.map((id, index) => { const student = data.students.find(
+  item => String(item.dbId || item.id) === String(id)
+); return [
+  pitch.number,
+  pitch.event || pitch.category,
+  pitch.ageGroup,
+  pitch.weightGroup || '',
+  index + 1,
+  student?.id || id,
+  student?.name,
+  instituteById(student?.instituteId)?.academyName
+]; })));
   } else if (type === 'complete') {
     const rows = [
       ...data.institutes.map(item => ['INSTITUTE', item.id, item.academyName, item.createdAt, 'INSTITUTE', item.id, item.academyName, item.phone]),
@@ -1033,6 +1352,65 @@ document.addEventListener('click', event => {
   else if (action === 'view-referee') { modalState = { type: 'referee-view', id: button.dataset.id }; renderModal(); }
   else if (action === 'view-pitch') { modalState = { type: 'pitch-view', id: button.dataset.id }; renderModal(); }
   else if (action === 'toggle-registration') toggleRegistration();
+  else if (action === 'add-pitch-category') {
+  modalState = { type: 'pitch-category' };
+  renderModal();
+}
+
+else if (action === 'edit-pitch-category') {
+  const index = Number(button.dataset.index);
+  const category = data.ageGroups[index];
+
+  if (category) {
+    modalState = {
+      type: 'pitch-category',
+      editIndex: index
+    };
+    renderModal();
+  }
+}
+
+
+else if (action === 'delete-pitch-category') {
+  const index = Number(button.dataset.index);
+  const category = data.ageGroups[index];
+
+  if (!category) {
+    toast('Category not found.', true);
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Delete the category "${category.label}"? This action cannot be undone.`
+  );
+
+  if (!confirmed) return;
+
+  data.ageGroups.splice(index, 1);
+
+  persist();
+  render();
+
+  toast('Category deleted successfully.');
+}
+
+
+else if (action === 'delete-generated-pitches') {
+  if (!data.pitches.length) return;
+
+  const confirmed = window.confirm(
+    'Delete all generated pitches? You can generate them again later.'
+  );
+
+  if (!confirmed) return;
+
+  data.pitches = [];
+  persist();
+  render();
+
+  toast('Generated pitches deleted. You can generate them again.');
+}
+
   else if (action === 'generate-pitches') generatePitches();
   else if (action === 'download') exportData(button.dataset.type);
   else if (action === 'export-institute') exportData('students', button.dataset.id);
@@ -1040,7 +1418,63 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('submit', async event => {
-  if (event.target.id === 'login-form') {
+  
+  
+if (event.target.id === 'pitch-category-form') {
+  event.preventDefault();
+
+  const form = new FormData(event.target);
+  const eventType = String(form.get('event') || '');
+  const label = String(form.get('label') || '').trim();
+  const min = Number(form.get('min'));
+  const max = Number(form.get('max'));
+
+  const editIndex = modalState?.editIndex;
+  const isEditing =
+    editIndex !== undefined &&
+    editIndex !== null &&
+    data.ageGroups[editIndex];
+
+  if (
+    !['INDIVIDUAL', 'FIGHT'].includes(eventType) ||
+    !label ||
+    !Number.isInteger(min) ||
+    !Number.isInteger(max) ||
+    min < 0 ||
+    max > 99 ||
+    min > max
+  ) {
+    toast('Enter a valid category name and age range.', true);
+    return;
+  }
+
+  const duplicate = data.ageGroups.some(
+    (group, index) =>
+      index !== editIndex &&
+      group.event === eventType &&
+      group.label.toLowerCase() === label.toLowerCase()
+  );
+
+  if (duplicate) {
+    toast('This category already exists for this event.', true);
+    return;
+  }
+
+  const updatedCategory = { event: eventType, label, min, max };
+
+  if (isEditing) {
+    data.ageGroups[editIndex] = updatedCategory;
+  } else {
+    data.ageGroups.push(updatedCategory);
+  }
+
+  persist();
+  modalState = null;
+  render();
+
+  toast(isEditing ? 'Category updated successfully.' : 'Category saved successfully.');
+} else if (event.target.id === 'login-form') {
+
     event.preventDefault();
     const form = new FormData(event.target);
     const email = String(form.get('loginId') || '').trim().toLowerCase();
@@ -1083,11 +1517,12 @@ document.addEventListener('submit', async event => {
   name: String(form.get('name') || '').trim(),
   age: Number(form.get('age')),
   gender: String(form.get('gender') || '').toUpperCase(),
+
   weight: String(form.get('weight') || '').trim(),
   events,
   category: events.length === 2 ? 'BOTH' : events[0],
   instituteId: event.target.dataset.id
-    ? data.students.find(student => student.id === event.target.dataset.id)?.instituteId
+    ? data.students.find(student => (student.dbId || student.id) === event.target.dataset.id)?.instituteId
     : currentInstitute()?.id
 };
     if (
@@ -1103,9 +1538,9 @@ document.addEventListener('submit', async event => {
   return;
 }
 
-    const existing = data.students.find(
-      student => student.id === event.target.dataset.id
-    );
+const existing = data.students.find(
+  student => (student.dbId || student.id) === event.target.dataset.id
+);
 
     if (existing) {
 const { data: updated, error } = await supabaseClient
@@ -1123,13 +1558,13 @@ const { data: updated, error } = await supabaseClient
       }
 
       Object.assign(existing, {
-        name: updated.name,
-        age: updated.age,
-        gender: updated.gender || values.gender,
-        weight: updated.weight ?? '',
-        events: values.events,
-        category: values.category
-      });
+  name: updated.name,
+  age: updated.age,
+  gender: String(updated.gender || values.gender || '').toUpperCase(),
+  weight: updated.weight ?? '',
+  events: values.events,
+  category: values.category
+});
 
       
 

@@ -19,7 +19,7 @@ export function participantFromRow(row) {
     instituteId: row.academy_id,
     name: row.name,
     age: row.age,
-    gender: row.gender || '',
+    gender: String(row.gender || '').trim().toUpperCase(),
     weight: row.weight ?? '',
     events,
     category: events.length === 2
