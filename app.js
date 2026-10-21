@@ -1057,15 +1057,6 @@ function pitchViewModal(number) {
 
   if (!pitch) return '';
 
-  return {
-    id,
-    name: student?.name,
-    gender: student?.gender,
-    pitchGender: pitch.gender,
-    age: participantAge(student)
-  };
-}));
-
 //pitch order
   const pitchGender = String(pitch.gender || '').toUpperCase();
 
