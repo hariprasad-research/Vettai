@@ -1370,20 +1370,20 @@ function exportData(type, instituteId = null) {
     downloadCsv('district-academies.csv', ['Institute ID', 'Login ID', 'Academy', 'Master', 'Phone', 'Email', 'Participants', 'Referees'], data.institutes.map(item => [item.id, item.loginId, item.academyName, item.masterName, item.phone, item.email || '', instituteStudents(item.id).length, instituteReferees(item.id).length]));
   } else if (type === 'referees') {
     downloadCsv('district-referees.csv', ['Name', 'Age', 'Academy', 'Phone', 'Institute ID'], data.referees.map(item => [item.name, item.age, item.academyName, item.phone, item.instituteId]));
-  } else if (type === 'pitches') {
-    downloadCsv('district-pitches.csv', ['Pitch', 'Event', 'Age group', 'Weight group', 'Order', 'Participant ID', 'Name', 'Academy'], data.pitches.flatMap(pitch => pitch.students.map((id, index) => { const student = data.students.find(
-  item => String(item.dbId || item.id) === String(id)
-); return [
-  pitch.number,
-  pitch.event || pitch.category,
-  pitch.ageGroup,
-  pitch.weightGroup || '',
-  index + 1,
-  student?.id || id,
-  student?.name,
-  instituteById(student?.instituteId)?.academyName
-]; })));
+  }  else if (type === 'pitches') {
+    if (typeof window.downloadPitchWorkbook !== 'function') {
+      toast('Pitch export module not loaded. Please refresh and try again.', true);
+      return;
+    }
+
+    window.downloadPitchWorkbook(
+      data.pitches,
+      data.students,
+      instituteById,
+      participantAge
+    );
   } else if (type === 'complete') {
+
     const rows = [
       ...data.institutes.map(item => ['INSTITUTE', item.id, item.academyName, item.createdAt, 'INSTITUTE', item.id, item.academyName, item.phone]),
       ...data.students.map(item => { const owner = instituteById(item.instituteId); return ['PARTICIPANT', item.id, item.name, participantAge(item), eventLabel(item), item.instituteId, owner?.academyName, item.weight || '']; }),
