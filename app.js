@@ -205,18 +205,6 @@ async function restoreAuthSession() {
           .select('*')
           .order('created_at', { ascending: true });
 
-
-          //temp 
-          console.table(
-  (rows || []).map(row => ({
-    id: row.participant_code,
-    name: row.name,
-    academyId: row.academy_id,
-    gender: row.gender,
-    oldGender: row.Gender
-  }))
-);
-
         if (error) throw error;
 
         data.students = (rows || []).map(participantFromRow);
@@ -1068,10 +1056,6 @@ function pitchViewModal(number) {
   );
 
   if (!pitch) return '';
-
-  //temp 
-  console.log('Pitch gender check:', pitch.students.map(id => {
-  const student = data.students.find(item => item.id === id);
 
   return {
     id,
