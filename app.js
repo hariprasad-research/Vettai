@@ -32,7 +32,6 @@ const NAV_ITEMS = [
 ];
 
 
-
 const seed = {
   registrationOpen: true,
   institutes: [],
@@ -41,10 +40,9 @@ const seed = {
   studentSequence: 1,
   ageGroups: [],
   pitches: [],
-  pitchWeightGrouping: false
+  pitchWeightGrouping: false,
+  pitchAssignments: {}
 };
-
-
 
 let data = loadData();
 // Never trust a browser-stored role; authenticate with Supabase.
@@ -577,6 +575,39 @@ function validateAcademySignup(form) {
   return Object.keys(errors).length === 0 ? values : null;
 }
 
+
+async function loadPitchCategoriesFromSupabase() {
+  try {
+    const { data: rows, error } = await supabaseClient
+      .from('pitch_categories')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    data.ageGroups = (rows || []).map(row => ({
+      dbId: row.id,
+      event: row.event,
+      categoryType: row.category_type || 'AGE',
+      label: row.name,
+      min: Number(row.min_value),
+      max: Number(row.max_value),
+      perPitch: Number(row.per_pitch),
+      enabled: row.enabled
+    }));
+
+    persist();
+
+    if (activePage === 'pitches') {
+      render();
+    }
+  } catch (error) {
+    console.error('Failed to load pitch categories:', error);
+    toast(`Could not load categories: ${error.message}`, true);
+  }
+}
+
+
 function renderPage() {
   if (activePage === 'dashboard') return renderDashboard();
   if (activePage === 'institutes') return renderInstitutes();
@@ -861,11 +892,13 @@ function pitchCategoryModal() {
       : null;
 
   const isEditing = Boolean(category);
+  const type = category?.categoryType || 'AGE';
 
   return modalFrame(
     isEditing ? 'Edit Pitch Category' : 'Add Pitch Category',
-    'Define the event and eligible age range.',
+    'Define the event, category range and participants per pitch.',
     `<form id="pitch-category-form" class="form-stack">
+
       <div class="field">
         <label for="pitch-category-event">Event</label>
         <select id="pitch-category-event" name="event" required>
@@ -875,24 +908,48 @@ function pitchCategoryModal() {
       </div>
 
       <div class="field">
+        <label for="pitch-category-type">Category Type</label>
+        <select id="pitch-category-type" name="categoryType" required>
+          <option value="AGE" ${type === 'AGE' ? 'selected' : ''}>Age</option>
+          <option value="WEIGHT" ${type === 'WEIGHT' ? 'selected' : ''}>Weight</option>
+        </select>
+      </div>
+
+      <div class="field">
         <label for="pitch-category-name">Category Name</label>
-        <input id="pitch-category-name" name="label" type="text"
-          value="${esc(category?.label || '')}"
-          placeholder="e.g. Under 10" required>
+        <input id="pitch-category-name" name="label"
+          type="text" value="${esc(category?.label || '')}"
+          placeholder="e.g. Under 10 or 30–35 KG" required>
       </div>
 
       <div class="form-row">
         <div class="field">
-          <label for="pitch-category-min">Minimum Age</label>
-          <input id="pitch-category-min" name="min" type="number"
-            min="0" max="99" value="${category?.min ?? ''}" required>
+          <label id="pitch-min-label" for="pitch-category-min">
+            Minimum ${type === 'AGE' ? 'Age' : 'Weight (KG)'}
+          </label>
+          <input id="pitch-category-min" name="min"
+            type="number" min="0" step="any"
+            value="${category?.min ?? ''}" required>
         </div>
 
         <div class="field">
-          <label for="pitch-category-max">Maximum Age</label>
-          <input id="pitch-category-max" name="max" type="number"
-            min="0" max="99" value="${category?.max ?? ''}" required>
+          <label id="pitch-max-label" for="pitch-category-max">
+            Maximum ${type === 'AGE' ? 'Age' : 'Weight (KG)'}
+          </label>
+          <input id="pitch-category-max" name="max"
+            type="number" min="0" step="any"
+            value="${category?.max ?? ''}" required>
         </div>
+      </div>
+
+      <div class="field">
+        <label for="pitch-category-per-pitch">
+          Participants Per Pitch
+        </label>
+        <input id="pitch-category-per-pitch" name="perPitch"
+          type="number" min="1" step="1"
+          value="${category?.perPitch ?? ''}"
+          placeholder="Enter number (e.g. 4, 8, 3)" required>
       </div>
 
       <div class="modal-actions">
@@ -1079,9 +1136,21 @@ sortedAges.forEach(age => {
 });
 
 
-const rows = orderedStudents.map(student =>
-  `<tr><td>${esc(student.id)}</td><td>${esc(student.name)}</td><td>${participantAge(student) ?? '—'}</td><td>${esc(instituteById(student.instituteId)?.academyName || '—')}</td></tr>`
-).join('');
+const rows = orderedStudents.map((student, index) => {
+  const pitchNumber = Math.floor(
+  index / Math.max(1, Number(pitch.perPitch) || 1)
+) + 1;
+
+  return `
+    <tr>
+      <td>${pitchNumber}</td>
+      <td>${esc(student.id)}</td>
+      <td>${esc(student.name)}</td>
+      <td>${participantAge(student) ?? '—'}</td>
+      <td>${esc(instituteById(student.instituteId)?.academyName || '—')}</td>
+    </tr>
+  `;
+}).join('');
 
   const genderLabel =
     pitchGender === 'MALE' ? 'Male' :
@@ -1092,12 +1161,13 @@ const rows = orderedStudents.map(student =>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>Participant ID</th>
-              <th>Name</th>
-              <th>Age</th>
-              <th>Academy</th>
-            </tr>
+<tr>
+  <th>Pitch Number</th>
+  <th>Participant ID</th>
+  <th>Name</th>
+  <th>Age</th>
+  <th>Academy</th>
+</tr>
           </thead>
           <tbody>
             ${rows || '<tr><td colspan="4">No matching participants. Regenerate pitches after checking participant details and age categories.</td></tr>'}
@@ -1145,33 +1215,55 @@ function toggleRegistration() {
 function generatePitches() {
   const grouped = new Map();
 
-  // Use the database UUID to identify participants uniquely.
   const participantKey = student =>
     String(student.dbId || student.id);
 
   for (const student of data.students) {
     const age = Number(participantAge(student));
+
     if (!Number.isFinite(age)) continue;
 
-    const gender = String(student.gender || '').trim().toUpperCase();
+    const gender = String(student.gender || '')
+      .trim()
+      .toUpperCase();
+
     if (!['MALE', 'FEMALE'].includes(gender)) continue;
 
-    // Match age groups to the correct event.
+    const weight = Number(student.weight);
+
     for (const event of participantEvents(student)) {
-      const categories = data.ageGroups.filter(group =>
-        group.event === event &&
-        age >= Number(group.min) &&
-        age <= Number(group.max)
-      );
+      const categories = data.ageGroups.filter(group => {
+        if (group.event !== event || group.enabled === false) {
+          return false;
+        }
+
+        const type = String(group.categoryType || 'AGE')
+          .trim()
+          .toUpperCase();
+
+        const value = type === 'WEIGHT' ? weight : age;
+
+        return (
+          Number.isFinite(value) &&
+          value >= Number(group.min) &&
+          value <= Number(group.max)
+        );
+      });
 
       for (const group of categories) {
-        const weightGroup = data.pitchWeightGrouping
-          ? String(student.weight || 'Weight not set').trim().toUpperCase()
-          : '';
+        const categoryType = String(group.categoryType || 'AGE')
+          .trim()
+          .toUpperCase();
+
+        const weightGroup =
+          data.pitchWeightGrouping && student.weight != null
+            ? String(student.weight).trim()
+            : '';
 
         const key = [
           event,
-          group.label,
+          categoryType,
+          group.dbId || group.label,
           gender,
           weightGroup
         ].join('|');
@@ -1181,6 +1273,8 @@ function generatePitches() {
             event,
             category: event,
             ageGroup: group.label,
+            categoryType,
+            perPitch: Math.max(1, Number(group.perPitch) || 1),
             gender,
             weightGroup,
             students: []
@@ -1190,7 +1284,6 @@ function generatePitches() {
         const pitch = grouped.get(key);
         const id = participantKey(student);
 
-        // Never add the same database participant twice.
         if (!pitch.students.includes(id)) {
           pitch.students.push(id);
         }
@@ -1204,14 +1297,8 @@ function generatePitches() {
     .sort((a, b) =>
       (eventOrder[a.event] ?? 99) -
         (eventOrder[b.event] ?? 99) ||
-      data.ageGroups.findIndex(
-        g => g.event === a.event && g.label === a.ageGroup
-      ) -
-        data.ageGroups.findIndex(
-          g => g.event === b.event && g.label === b.ageGroup
-        ) ||
-      a.gender.localeCompare(b.gender) ||
-      a.weightGroup.localeCompare(b.weightGroup)
+      a.ageGroup.localeCompare(b.ageGroup) ||
+      String(a.gender).localeCompare(String(b.gender))
     )
     .map((pitch, index) => ({
       ...pitch,
@@ -1307,7 +1394,7 @@ function exportData(type, instituteId = null) {
   }
 }
 
-document.addEventListener('click', event => {
+document.addEventListener('click', async event => {
   const pageButton = event.target.closest('[data-page]');
   if (pageButton) {
     const destination = pageButton.dataset.page;
@@ -1316,7 +1403,12 @@ document.addEventListener('click', event => {
     searchText = '';
     history.pushState({ page: activePage }, '', `#${activePage}`);
     render();
-    return;
+
+if (destination === 'pitches') {
+  loadPitchCategoriesFromSupabase();
+}
+
+return;
   }
   const actionButton = event.target.closest('[data-action]');
 
@@ -1419,19 +1511,36 @@ else if (action === 'delete-pitch-category') {
     return;
   }
 
+  if (!category.dbId) {
+    toast('This category has no Supabase ID. Reload categories and try again.', true);
+    return;
+  }
+
   const confirmed = window.confirm(
     `Delete the category "${category.label}"? This action cannot be undone.`
   );
 
   if (!confirmed) return;
 
-  data.ageGroups.splice(index, 1);
+  try {
+    const { error } = await supabaseClient
+      .from('pitch_categories')
+      .delete()
+      .eq('id', category.dbId);
 
-  persist();
-  render();
+    if (error) throw error;
 
-  toast('Category deleted successfully.');
+    data.ageGroups.splice(index, 1);
+    persist();
+    render();
+
+    toast('Category deleted from Supabase.');
+  } catch (error) {
+    console.error('Category deletion failed:', error);
+    toast(`Delete failed: ${error.message}`, true);
+  }
 }
+
 
 
 else if (action === 'delete-generated-pitches') {
@@ -1458,32 +1567,38 @@ else if (action === 'delete-generated-pitches') {
 
 document.addEventListener('submit', async event => {
   
-  
+
 if (event.target.id === 'pitch-category-form') {
   event.preventDefault();
 
   const form = new FormData(event.target);
   const eventType = String(form.get('event') || '');
+  const categoryType = String(form.get('categoryType') || '');
   const label = String(form.get('label') || '').trim();
   const min = Number(form.get('min'));
   const max = Number(form.get('max'));
+  const perPitch = Number(form.get('perPitch'));
 
   const editIndex = modalState?.editIndex;
-  const isEditing =
-    editIndex !== undefined &&
-    editIndex !== null &&
-    data.ageGroups[editIndex];
+  const existing =
+    editIndex !== undefined && editIndex !== null
+      ? data.ageGroups[editIndex]
+      : null;
 
   if (
     !['INDIVIDUAL', 'FIGHT'].includes(eventType) ||
+    !['AGE', 'WEIGHT'].includes(categoryType) ||
     !label ||
-    !Number.isInteger(min) ||
-    !Number.isInteger(max) ||
+    form.get('min') === '' ||
+    form.get('max') === '' ||
+    !Number.isFinite(min) ||
+    !Number.isFinite(max) ||
     min < 0 ||
-    max > 99 ||
-    min > max
+    max < min ||
+    !Number.isInteger(perPitch) ||
+    perPitch < 1
   ) {
-    toast('Enter a valid category name and age range.', true);
+    toast('Check the category details and participants per pitch.', true);
     return;
   }
 
@@ -1491,28 +1606,80 @@ if (event.target.id === 'pitch-category-form') {
     (group, index) =>
       index !== editIndex &&
       group.event === eventType &&
+      (group.categoryType || 'AGE') === categoryType &&
       group.label.toLowerCase() === label.toLowerCase()
   );
 
   if (duplicate) {
-    toast('This category already exists for this event.', true);
+    toast('This category already exists for this event and type.', true);
     return;
   }
 
-  const updatedCategory = { event: eventType, label, min, max };
+  const payload = {
+    event: eventType,
+    category_type: categoryType,
+    name: label,
+    min_value: min,
+    max_value: max,
+    per_pitch: perPitch
+  };
 
-  if (isEditing) {
-    data.ageGroups[editIndex] = updatedCategory;
-  } else {
-    data.ageGroups.push(updatedCategory);
+  try {
+    let result;
+
+    if (existing?.dbId) {
+      result = await supabaseClient
+        .from('pitch_categories')
+        .update(payload)
+        .eq('id', existing.dbId)
+        .select()
+        .single();
+    } else {
+      result = await supabaseClient
+        .from('pitch_categories')
+        .insert(payload)
+        .select()
+        .single();
+    }
+
+    if (result.error) throw result.error;
+
+    const row = result.data;
+
+    const savedCategory = {
+      dbId: row.id,
+      event: row.event,
+      categoryType: row.category_type,
+      label: row.name,
+      min: Number(row.min_value),
+      max: Number(row.max_value),
+      perPitch: Number(row.per_pitch),
+      enabled: row.enabled
+    };
+
+    if (existing) {
+      data.ageGroups[editIndex] = savedCategory;
+    } else {
+      data.ageGroups.push(savedCategory);
+    }
+
+    persist();
+    modalState = null;
+    render();
+
+    toast(
+      existing
+        ? 'Category updated in Supabase.'
+        : 'Category saved to Supabase.'
+    );
+  } catch (error) {
+    console.error('Pitch category save failed:', error);
+    toast(`Supabase save failed: ${error.message}`, true);
   }
+}
 
-  persist();
-  modalState = null;
-  render();
 
-  toast(isEditing ? 'Category updated successfully.' : 'Category saved successfully.');
-} else if (event.target.id === 'login-form') {
+else if (event.target.id === 'login-form') {
 
     event.preventDefault();
     const form = new FormData(event.target);
