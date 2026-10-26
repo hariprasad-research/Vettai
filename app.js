@@ -1603,6 +1603,7 @@ if (destination === 'pitches') {
 
 return;
   }
+
   const actionButton = event.target.closest('[data-action]');
 
 
@@ -1621,7 +1622,6 @@ return;
     render();
     return;
   }
-
 
   if (action === 'back-to-registration') {
     authView = 'registration';
@@ -2182,7 +2182,13 @@ document.addEventListener('change', event => {
 });
 
 window.addEventListener('popstate', event => {
-  if (!session) { render(); return; }
+  if (!session) {
+    // TEMP START: Direct login URL for demo
+if (window.location.hash === '#login' && !session) {
+  authView = 'login';
+}
+// TEMP END: Direct login URL for demo
+ render(); return; }
   const destination = event.state?.page || location.hash.slice(1) || 'dashboard';
   const allowed = NAV_ITEMS.some(item => item.id === destination && item.roles.includes(session.role));
   activePage = allowed || (destination === 'institute-detail' && isOrganiser()) ? destination : 'dashboard';
