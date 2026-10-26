@@ -346,12 +346,17 @@ function render() {
   const root = document.querySelector('#app');
 
 
-  if (!session) {
-    root.innerHTML = authView === 'registration'
-      ? renderRegistrationChoice()
-      : renderLogin();
-    return;
+if (!session) {
+  if (authView === 'self-registration') {
+    root.innerHTML = renderSelfRegistration();
+    setupSelfRegistrationAutocomplete();
+  } else if (authView === 'registration') {
+    root.innerHTML = renderRegistrationChoice();
+  } else {
+    root.innerHTML = renderLogin();
   }
+  return;
+}
 
 
   if (session.role === 'INSTITUTE' && !currentInstitute()) { logout(); return; }
@@ -395,11 +400,12 @@ function profileRow() {
 
 function renderRegistrationChoice() {
   return `<div class="login-shell">
-    <section class="login-art">${brand()}
+    <section class="login-art">
+      ${brand()}
       <div class="art-copy">
         <p class="eyebrow">One district. One arena.</p>
         <h1>Discipline meets the day.</h1>
-        <p>Registration, verification and pitch coordination for the district Silambam match.</p>
+        <p>Registration and pitch coordination for Silambam.</p>
         <div class="event-stamp">24 OCTOBER 2026</div>
       </div>
       <div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div>
@@ -409,22 +415,165 @@ function renderRegistrationChoice() {
       <div class="login-panel">
         <p class="eyebrow">Registration</p>
         <h2>Choose Registration Type</h2>
-        <p>Select how you want to register for the tournament.</p>
+        <p>Select how you want to register.</p>
 
         <button class="btn btn-primary btn-wide"
-          type="button"
-          data-action="self-registration">
+          type="button" data-action="self-registration">
           Self Registration →
         </button>
 
         <button class="btn btn-outline btn-wide"
-          type="button"
-          data-action="academy-registration">
-          Academy / Institution Registration →
+          type="button" data-action="academy-registration">
+          Academy / Institution Login →
         </button>
       </div>
     </section>
   </div>`;
+}
+
+function renderSelfRegistration() {
+  return `<div class="login-shell">
+    <section class="login-art">
+      ${brand()}
+      <div class="art-copy">
+        <p class="eyebrow">Participant registration</p>
+        <h1>Enter the arena.</h1>
+        <p>Complete your details to register for the event.</p>
+        <div class="event-stamp">VETTAI FIXTURES</div>
+      </div>
+      <div class="art-foot">DISTRICT SILAMBAM MATCH</div>
+    </section>
+
+    <section class="login-main">
+      <div class="login-panel signup-panel">
+        <p class="eyebrow">Self registration</p>
+        <h2>PARTICIPANT DETAILS</h2>
+
+        <form id="self-registration-form" novalidate>
+          <div class="field">
+            <label for="self-name">Full name</label>
+            <input id="self-name" name="fullName"
+              maxlength="120" required>
+          </div>
+
+          <div class="field">
+            <label for="self-dob">Date of birth</label>
+            <input id="self-dob" name="dateOfBirth"
+              type="date" max="${new Date().toISOString().slice(0, 10)}"
+              required>
+          </div>
+
+          <div class="field">
+            <label for="self-mobile">Mobile number</label>
+            <input id="self-mobile" name="mobile" type="tel"
+              inputmode="numeric" minlength="10" maxlength="15"
+              placeholder="Enter mobile number" required>
+          </div>
+
+          <div class="field">
+            <label for="self-state">State</label>
+            <input id="self-state" name="state" value="Tamil Nadu"
+              maxlength="100" required>
+          </div>
+
+          <div class="field">
+            <label for="self-district">District</label>
+            <input id="self-district" name="district"
+              maxlength="100" required>
+          </div>
+
+          <div class="field">
+            <label for="self-game">Game</label>
+            <select id="self-game" name="game" required>
+              <option value="">Select game</option>
+              <option value="Silambam">Silambam</option>
+            </select>
+          </div>
+
+
+<div class="field">
+  <label for="self-institution">Academy / School</label>
+  <input id="self-institution" name="institutionName"
+    maxlength="200" autocomplete="off"
+    placeholder="Type academy or school name" required>
+  <input type="hidden" id="self-academy-id" name="academyId">
+  <div id="self-institution-suggestions"
+    class="institution-suggestions"></div>
+  <small>Select an existing institution from the suggestions.</small>
+</div>
+
+
+          <button class="btn btn-primary btn-wide" type="submit">
+            Submit Registration →
+          </button>
+
+          <button class="btn btn-outline btn-wide" type="button"
+            data-action="back-to-registration">
+            ← Back
+          </button>
+        </form>
+      </div>
+    </section>
+  </div>`;
+}
+
+
+async function setupSelfRegistrationAutocomplete() {
+  const input = document.querySelector('#self-institution');
+  const hiddenId = document.querySelector('#self-academy-id');
+  const suggestions = document.querySelector('#self-institution-suggestions');
+
+  if (!input || !hiddenId || !suggestions) return;
+
+  let academies = [];
+
+  const { data, error } = await supabaseClient
+    .from('academies')
+    .select('id, academy_name')
+    .order('academy_name');
+
+  if (error) {
+    console.error('Could not load institutions:', error);
+    suggestions.textContent = 'Could not load institutions. Try again.';
+    return;
+  }
+
+  academies = data || [];
+
+  input.addEventListener('input', () => {
+    hiddenId.value = '';
+
+    const query = input.value.trim().toLowerCase();
+    suggestions.replaceChildren();
+
+    if (!query) return;
+
+    const matches = academies.filter(item =>
+      item.academy_name.toLowerCase().includes(query)
+    );
+
+    matches.forEach(item => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'institution-suggestion';
+      option.textContent = item.academy_name;
+
+      option.addEventListener('click', () => {
+        input.value = item.academy_name;
+        hiddenId.value = item.id;
+        suggestions.replaceChildren();
+      });
+
+      suggestions.appendChild(option);
+    });
+
+    if (!matches.length) {
+      const message = document.createElement('p');
+      message.textContent =
+        'No matching registered institution. Check the name with the organiser.';
+      suggestions.appendChild(message);
+    }
+  });
 }
 
 function renderLogin() {
@@ -1415,9 +1564,10 @@ return;
   if (action === 'show-login') { authView = 'login'; render(); return; }
 
   if (action === 'self-registration') {
-    window.location.href = 'https://forms.gle/ythS4AWjPrLGaEwt9'; //g-form link
-    return;
-  }
+  authView = 'self-registration';
+  render();
+  return;
+}
 
 
 
@@ -1542,6 +1692,77 @@ else if (action === 'delete-generated-pitches') {
 
 document.addEventListener('submit', async event => {
   
+  
+if (event.target.id === 'self-registration-form') {
+  event.preventDefault();
+
+  const form = event.target;
+  const values = new FormData(form);
+
+  const fullName = String(values.get('fullName') || '').trim();
+  const dateOfBirth = String(values.get('dateOfBirth') || '');
+  const mobile = String(values.get('mobile') || '').trim();
+  const state = String(values.get('state') || '').trim();
+  const district = String(values.get('district') || '').trim();
+  const game = String(values.get('game') || '').trim();
+  const institutionName =
+    String(values.get('institutionName') || '').trim();
+    const academyId = String(values.get('academyId') || '').trim();
+
+  if (
+    !fullName ||
+    !dateOfBirth ||
+    dateOfBirth > new Date().toISOString().slice(0, 10) ||
+    !/^[0-9+()\-\s]{10,20}$/.test(mobile) ||
+    mobile.replace(/\D/g, '').length < 10 ||
+    !state ||
+    !district ||
+    !game ||
+    !institutionName ||
+    !academyId
+  ) {
+    toast('Please check all registration details.', true);
+    return;
+  }
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+
+  try {
+    const { error } = await supabaseClient
+      .from('self_registrations')
+      .insert({
+        full_name: fullName,
+        date_of_birth: dateOfBirth,
+        mobile,
+        state,
+        district,
+        game,
+        academy_id: academyId,
+        institution_name: institutionName,
+        status: 'pending'
+      });
+
+    if (error) throw error;
+
+    form.innerHTML = `
+      <h3>Registration submitted!</h3>
+      <p>Your details have been received successfully.</p>
+      <p>Your registration is pending verification.</p>
+      <button class="btn btn-outline btn-wide" type="button"
+        data-action="back-to-registration">
+        Back to registration options
+      </button>
+    `;
+  } catch (error) {
+    console.error('Self-registration failed:', error);
+    toast(`Registration failed: ${error.message}`, true);
+    submitButton.disabled = false;
+  }
+
+  return;
+}
+
 
 if (event.target.id === 'pitch-category-form') {
   event.preventDefault();

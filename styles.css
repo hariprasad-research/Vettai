@@ -285,3 +285,36 @@ tbody tr:hover { background: #fbfcf8; }
   .pitch-card-head { background: #f3f4ed !important; print-color-adjust: exact; }
   th { print-color-adjust: exact; }
 }
+
+.institution-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.institution-suggestion {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: #fff;
+  color: #26332f;
+  border: 1px solid #d8e1dc;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.institution-suggestion:hover {
+  background: #edf6f1;
+  border-color: #167451;
+}
+
+.institution-suggestions p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #66736d;
+}
