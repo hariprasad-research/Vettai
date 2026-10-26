@@ -398,7 +398,76 @@ function profileRow() {
   return `<div class="profile-row"><div class="avatar">${esc(initials)}</div><div class="profile-meta"><strong>${esc(name)}</strong><small>${esc(role)}</small></div><button class="logout-icon" data-action="logout" title="Log out" aria-label="Log out">↗</button></div>`;
 }
 
+
 function renderRegistrationChoice() {
+  // ===== TEMP START: VETTAI WhatsApp Contact Landing Page =====
+  // Temporary replacement for the original registration choice page.
+  // To restore later, save and restore the original function.
+
+  return `
+    <div class="login-shell">
+      <section class="login-art">
+        ${brand()}
+
+        <div class="art-copy">
+          <p class="eyebrow">VETTAI FIXTURES</p>
+
+          <h1>Empowering Silambam. Connecting Academies.</h1>
+
+          <p>
+            A platform designed to connect Silambam academies,
+            institutions, athletes, and competition organizers.
+            We aim to make the competition experience more
+            organized and accessible.
+          </p>
+
+          <div class="event-stamp">VETTAI FIXTURES</div>
+        </div>
+
+        <div class="art-foot">
+          VETTAI FIXTURES · TAMIL NADU
+        </div>
+      </section>
+
+      <section class="login-main">
+        <div class="login-panel">
+          <p class="eyebrow">WELCOME TO VETTAI</p>
+
+          <h2>Be Part of the VETTAI Community</h2>
+
+          <p>
+            Are you representing a Silambam academy or an
+            institution? Contact our team to learn about
+            registration, onboarding, and participation in
+            upcoming fixtures.
+          </p>
+
+          <p>
+            Our team will guide you through the next steps
+            and help you get started.
+          </p>
+
+          <a
+            class="btn btn-primary btn-wide"
+            href="https://wa.me/919962090815?text=Hello%20VETTAI%20team%2C%20I%20would%20like%20to%20know%20more%20about%20academy%20registration%20and%20VETTAI%20Fixtures."
+            target="_blank"
+            rel="noopener noreferrer"
+            style="text-decoration: none;"
+          >
+            Contact Us on WhatsApp →
+          </a>
+
+          <p style="margin-top: 16px; font-size: 13px; text-align: center;">
+            Have questions? We're here to help.
+          </p>
+        </div>
+      </section>
+    </div>
+  `;
+
+  // ===== TEMP END: VETTAI WhatsApp Contact Landing Page =====
+
+
   return `<div class="login-shell">
     <section class="login-art">
       ${brand()}
