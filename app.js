@@ -49,6 +49,7 @@ let data = loadData();
 let session = null;
 let authView = 'registration';
 let signupCreatedId = null;
+let registrationEnabled = true;
 let activePage = 'dashboard';
 let selectedInstitute = null;
 let searchText = '';
@@ -86,7 +87,18 @@ function loadData() {
   return structuredClone(seed);
 }
 
+async function loadRegistrationStatus() {
+  const { data, error } = await supabaseClient.rpc(
+    'get_registration_status'
+  );
 
+  if (error || typeof data !== 'boolean') {
+    console.error('Registration status error:', error);
+    throw new Error('Could not load registration settings.');
+  }
+
+  registrationEnabled = data;
+}
 
 
 function loadSession() {
@@ -145,6 +157,9 @@ async function loadRefereesFromSupabase() {
 
 async function restoreAuthSession() {
   try {
+    // Read the admin-controlled registration setting first.
+    await loadRegistrationStatus();
+
     // Verify the currently authenticated Supabase user.
     const { data: authData, error: authError } =
       await supabaseClient.auth.getUser();
@@ -352,6 +367,7 @@ if (!session) {
     setupSelfRegistrationAutocomplete();
   } else if (authView === 'registration') {
     root.innerHTML = renderRegistrationChoice();
+    loadPublicWhatsAppSettings();
   } else {
     root.innerHTML = renderLogin();
   }
@@ -390,115 +406,171 @@ if (!session) {
 
 function brand() { return `<div class="brand"><span class="brand-mark" aria-hidden="true">⌁</span><span>VETTAI</span></div>`; }
 function navButton(item, current) { const selectedPage = current === 'institute-detail' ? 'institutes' : current; return `<button class="nav-button ${selectedPage === item.id ? 'active' : ''}" data-page="${item.id}"><span class="nav-icon" aria-hidden="true">${item.icon}</span><span>${item.label}</span></button>`; }
+
 function profileRow() {
   const institute = currentInstitute();
-  const name = isOrganiser() ? 'HFS Academy' : institute.academyName;
-  const role = isOrganiser() ? 'Organiser account' : institute.id;
-  const initials = isOrganiser() ? 'HFS' : institute.academyName.split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase();
-  return `<div class="profile-row"><div class="avatar">${esc(initials)}</div><div class="profile-meta"><strong>${esc(name)}</strong><small>${esc(role)}</small></div><button class="logout-icon" data-action="logout" title="Log out" aria-label="Log out">↗</button></div>`;
+
+  const name = isOrganiser()
+    ? (data.organiserName || data.organisationName || 'Organiser')
+    : (institute?.academyName || 'Academy');
+
+  const role = isOrganiser()
+    ? 'Organiser account'
+    : (institute?.id || 'Academy account');
+
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(word => word[0])
+    .join('')
+    .toUpperCase();
+
+  return `<div class="profile-row">
+    <div class="avatar">${esc(initials)}</div>
+    <div class="profile-meta">
+      <strong>${esc(name)}</strong>
+      <small>${esc(role)}</small>
+    </div>
+    <button class="logout-icon" data-action="logout"
+      title="Log out" aria-label="Log out">↗</button>
+  </div>`;
 }
 
 
+
 function renderRegistrationChoice() {
-  // ===== TEMP START: VETTAI WhatsApp Contact Landing Page =====
-  // Temporary replacement for the original registration choice page.
-  // To restore later, save and restore the original function.
+  if (!registrationEnabled) {
+    return `
+      <div class="login-shell">
+        <section class="login-art">
+          ${brand()}
+          <div class="art-copy">
+            <p class="eyebrow">VETTAI FIXTURES</p>
+            <h1>Empowering Silambam. Connecting Academies.</h1>
+            <p>
+              A platform designed to connect Silambam academies,
+              institutions, athletes, and competition organizers.
+              We aim to make the competition experience more
+              organized and accessible.
+            </p>
+            <div class="event-stamp">VETTAI FIXTURES</div>
+          </div>
+          <div class="art-foot">VETTAI FIXTURES · TAMIL NADU</div>
+        </section>
+
+        <section class="login-main">
+          <div class="login-panel">
+            <p class="eyebrow">WELCOME TO VETTAI</p>
+            <h2>Be Part of the VETTAI Community</h2>
+            <p>
+              Are you representing a Silambam academy or an
+              institution? Contact our team to learn about
+              registration, onboarding, and participation in
+              upcoming fixtures.
+            </p>
+            <p>
+              Our team will guide you through the next steps
+              and help you get started.
+            </p>
+
+<a
+  class="btn btn-primary btn-wide"
+  id="publicWhatsAppButton"
+  href="#"
+  target="_blank"
+  rel="noopener noreferrer"
+  style="text-decoration: none;"
+  aria-disabled="true"
+>
+  Contact Us on WhatsApp →
+</a>
+
+            <p style="margin-top:16px;font-size:13px;text-align:center;">
+              Have questions? We're here to help.
+            </p>
+          </div>
+        </section>
+      </div>
+    `;
+  }
 
   return `
     <div class="login-shell">
       <section class="login-art">
         ${brand()}
-
         <div class="art-copy">
-          <p class="eyebrow">VETTAI FIXTURES</p>
-
-          <h1>Empowering Silambam. Connecting Academies.</h1>
-
+          <p class="eyebrow">One district. One arena.</p>
+          <h1>Discipline meets the day.</h1>
           <p>
-            A platform designed to connect Silambam academies,
-            institutions, athletes, and competition organizers.
-            We aim to make the competition experience more
-            organized and accessible.
+            Registration, verification and pitch coordination
+            for the district Silambam match.
           </p>
-
-          <div class="event-stamp">VETTAI FIXTURES</div>
+          <div class="event-stamp">24 OCTOBER 2026</div>
         </div>
-
-        <div class="art-foot">
-          VETTAI FIXTURES · TAMIL NADU
-        </div>
+        <div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div>
       </section>
 
       <section class="login-main">
         <div class="login-panel">
-          <p class="eyebrow">WELCOME TO VETTAI</p>
+          <p class="eyebrow">Registration</p>
+          <h2>Choose Registration Type</h2>
+          <p>Select how you want to register.</p>
 
-          <h2>Be Part of the VETTAI Community</h2>
-
-          <p>
-            Are you representing a Silambam academy or an
-            institution? Contact our team to learn about
-            registration, onboarding, and participation in
-            upcoming fixtures.
-          </p>
-
-          <p>
-            Our team will guide you through the next steps
-            and help you get started.
-          </p>
-
-          <a
+          <button
             class="btn btn-primary btn-wide"
-            href="https://wa.me/919962090815?text=Hello%20VETTAI%20team%2C%20I%20would%20like%20to%20know%20more%20about%20academy%20registration%20and%20VETTAI%20Fixtures."
-            target="_blank"
-            rel="noopener noreferrer"
-            style="text-decoration: none;"
+            type="button"
+            data-action="self-registration"
           >
-            Contact Us on WhatsApp →
-          </a>
+            Self Registration →
+          </button>
 
-          <p style="margin-top: 16px; font-size: 13px; text-align: center;">
-            Have questions? We're here to help.
-          </p>
+          <button
+            class="btn btn-outline btn-wide"
+            type="button"
+            data-action="academy-registration"
+          >
+            Academy / Institution Registration →
+          </button>
         </div>
       </section>
     </div>
   `;
-
-  // ===== TEMP END: VETTAI WhatsApp Contact Landing Page =====
-
-
-  return `<div class="login-shell">
-    <section class="login-art">
-      ${brand()}
-      <div class="art-copy">
-        <p class="eyebrow">One district. One arena.</p>
-        <h1>Discipline meets the day.</h1>
-        <p>Registration and pitch coordination for Silambam.</p>
-        <div class="event-stamp">24 OCTOBER 2026</div>
-      </div>
-      <div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div>
-    </section>
-
-    <section class="login-main">
-      <div class="login-panel">
-        <p class="eyebrow">Registration</p>
-        <h2>Choose Registration Type</h2>
-        <p>Select how you want to register.</p>
-
-        <button class="btn btn-primary btn-wide"
-          type="button" data-action="self-registration">
-          Self Registration →
-        </button>
-
-        <button class="btn btn-outline btn-wide"
-          type="button" data-action="academy-registration">
-          Academy / Institution Login →
-        </button>
-      </div>
-    </section>
-  </div>`;
 }
+
+
+async function loadPublicWhatsAppSettings() {
+  const button = document.getElementById("publicWhatsAppButton");
+  if (!button) return;
+
+  try {
+    
+const { data, error } = await supabaseClient.rpc(
+  "get_public_contact_settings"
+);
+
+
+    if (error) throw error;
+
+    const settings = Array.isArray(data) ? data[0] : data;
+    const number = String(settings?.whatsapp_number || "");
+    const message = String(settings?.whatsapp_message || "");
+
+    if (!/^[0-9]{10,15}$/.test(number) || !message.trim()) {
+      throw new Error("Invalid WhatsApp settings");
+    }
+
+    button.href =
+      `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+
+    button.removeAttribute("aria-disabled");
+  } catch (error) {
+    console.error("Failed to load WhatsApp settings:", error);
+    button.removeAttribute("href");
+    button.setAttribute("aria-disabled", "true");
+  }
+}
+
 
 function renderSelfRegistration() {
   return `<div class="login-shell">
@@ -551,13 +623,29 @@ function renderSelfRegistration() {
               maxlength="100" required>
           </div>
 
-          <div class="field">
-            <label for="self-game">Game</label>
-            <select id="self-game" name="game" required>
-              <option value="">Select game</option>
-              <option value="Silambam">Silambam</option>
-            </select>
-          </div>
+
+<div class="field">
+  <label for="self-gender">Gender</label>
+  <select id="self-gender" name="gender" required>
+    <option value="">Select gender</option>
+    <option value="MALE">Male</option>
+    <option value="FEMALE">Female</option>
+  </select>
+</div>
+
+<div class="field full">
+  <label>Events</label>
+  <div class="event-options">
+    <label>
+      <input type="checkbox" name="events" value="INDIVIDUAL">
+      Individual
+    </label>
+    <label>
+      <input type="checkbox" name="events" value="FIGHT">
+      Fight
+    </label>
+  </div>
+</div>
 
 
 <div class="field">
@@ -636,12 +724,24 @@ async function setupSelfRegistrationAutocomplete() {
       suggestions.appendChild(option);
     });
 
-    if (!matches.length) {
-      const message = document.createElement('p');
-      message.textContent =
-        'No matching registered institution. Check the name with the organiser.';
-      suggestions.appendChild(message);
-    }
+const exactMatch = academies.some(item =>
+  item.academy_name?.trim().toLowerCase() === query
+);
+
+if (!exactMatch) {
+  const createOption = document.createElement('button');
+  createOption.type = 'button';
+  createOption.className = 'institution-suggestion';
+  createOption.textContent = `+ Use new academy: ${input.value.trim()}`;
+
+  createOption.addEventListener('click', () => {
+    input.value = input.value.trim();
+    hiddenId.value = '';
+    suggestions.replaceChildren();
+  });
+
+  suggestions.appendChild(createOption);
+}
   });
 }
 
@@ -905,7 +1005,15 @@ function renderParticipants() {
     const matchesAgeGroup = ageGroupFilter === 'ALL' || ageGroup(participantAge(student))?.label === ageGroupFilter;
     return matchesText && matchesInstitute && matchesAgeGroup && (categoryFilter === 'ALL' || participantEvents(student).includes(categoryFilter));
   });
-  const addButton = !organiser ? `<button class="btn btn-primary" data-action="add-student" ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}>＋ Add Participant</button>` : '';
+const addButton = `
+  <button
+    class="btn btn-primary"
+    data-action="add-student"
+    ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}
+  >
+    ＋ Add Participant
+  </button>
+`;
   const description = organiser ? 'Review every student entry before pitch allocation.' : 'Manage your academy’s participant registrations.';
   return `${pageHeading(organiser ? 'Event roster' : 'Academy roster', 'Participants', description, addButton)}
     ${organiser ? `<div class="summary-row"><div class="mini-stat"><span>All entries</span><strong>${students.length}</strong></div><div class="mini-stat"><span>Individual</span><strong>${allStats(students).individual}</strong></div><div class="mini-stat"><span>Fight</span><strong>${allStats(students).fight}</strong></div><div class="mini-stat"><span>Both Events</span><strong>${allStats(students).both}</strong></div></div>` : (!data.registrationOpen ? `<div class="note" style="margin-bottom:15px">Registration is closed. You can view existing entries, but cannot add, edit or delete participants.</div>` : '')}
@@ -1003,26 +1111,54 @@ function renderPitches() {
   )}
 
   
-    <section class="panel" style="margin-bottom: 16px;">
-      <div class="panel-header">
-        <h3>Saved Age Categories</h3>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Category Name</th>
-              <th>Age Range</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${categoryRows || `<tr><td colspan="4">No categories added yet.</td></tr>`}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    
+<section class="panel saved-categories-panel" style="margin-bottom: 16px;">
+  <button
+    type="button"
+    class="saved-categories-toggle"
+    data-action="toggle-saved-categories"
+    aria-expanded="false"
+    aria-controls="saved-categories-content"
+  >
+    <span>
+      <span class="saved-categories-title">Saved Age Categories</span>
+      <span class="saved-categories-subtitle">
+        View and manage competition categories
+      </span>
+    </span>
+
+    <span class="saved-categories-chevron" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path
+          d="m6 9 6 6 6-6"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </span>
+  </button>
+
+  <div id="saved-categories-content" hidden>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Category Name</th>
+            <th>Age Range</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${categoryRows || `<tr><td colspan="4">No categories added yet.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
     <section class="panel">
       <div class="table-wrap">
         <table>
@@ -1186,8 +1322,8 @@ function studentModal(id) {
   const title = existing ? 'Edit participant' : 'Add participant';
   const checkedEvents = participantEvents(existing || {});
 
-  const content = `<form id="student-form" class="modal-form" data-id="${existing?.dbId || existing?.id || ''}">
-    <div class="form-grid">
+  const content = `<form id="student-form" class="modal-form" data-id="${existing?.dbId || existing?.id || ''}">  
+  <div class="form-grid">
       <div class="field">
         <label>Participant ID</label>
         <div class="readonly-field">${existing?.id || nextStudentCode()} · automatic</div>
@@ -1202,6 +1338,21 @@ function studentModal(id) {
         <label for="student-name">Name</label>
         <input id="student-name" name="name" required maxlength="100" value="${esc(existing?.name || '')}" placeholder="Full name">
       </div>
+
+${isOrganiser() ? `
+  <div class="field full">
+    <label for="student-institute">Academy</label>
+    <select id="student-institute" name="instituteId" required>
+      <option value="">Select academy</option>
+      ${data.institutes.map(item => `
+        <option value="${esc(item.id)}"
+          ${existing?.instituteId === item.id ? 'selected' : ''}>
+          ${esc(item.academyName)}
+        </option>
+      `).join('')}
+    </select>
+  </div>
+` : ''}
 
       <div class="field">
         <label for="student-gender">Gender</label>
@@ -1617,11 +1768,6 @@ return;
     return;
   }
 
-  if (action === 'academy-registration') {
-    authView = 'login';
-    render();
-    return;
-  }
 
   if (action === 'back-to-registration') {
     authView = 'registration';
@@ -1632,12 +1778,29 @@ return;
   if (action === 'show-signup') { authView = 'signup'; render(); return; }
   if (action === 'show-login') { authView = 'login'; render(); return; }
 
-  if (action === 'self-registration') {
-  authView = 'self-registration';
+if (action === 'academy-registration') {
+  if (!registrationEnabled) {
+    authView = 'registration';
+    render();
+    return;
+  }
+
+  authView = 'login';
   render();
   return;
 }
 
+if (action === 'self-registration') {
+  if (!registrationEnabled) {
+    authView = 'registration';
+    render();
+    return;
+  }
+
+  authView = 'self-registration';
+  render();
+  return;
+}
 
 
   // if (action === 'academy-registration') {
@@ -1680,6 +1843,23 @@ return;
   else if (action === 'add-pitch-category') {
   modalState = { type: 'pitch-category' };
   renderModal();
+}
+else if (action === 'toggle-saved-categories') {
+  const toggle = event.target.closest(
+    '[data-action="toggle-saved-categories"]'
+  );
+
+  const content = document.getElementById(
+    'saved-categories-content'
+  );
+
+  if (toggle && content) {
+    const isExpanded =
+      toggle.getAttribute('aria-expanded') === 'true';
+
+    toggle.setAttribute('aria-expanded', String(!isExpanded));
+    content.hidden = isExpanded;
+  }
 }
 
 else if (action === 'edit-pitch-category') {
@@ -1762,8 +1942,16 @@ else if (action === 'delete-generated-pitches') {
 document.addEventListener('submit', async event => {
   
   
+
 if (event.target.id === 'self-registration-form') {
   event.preventDefault();
+
+  if (!registrationEnabled) {
+    authView = 'registration';
+    render();
+    toast('Registration is currently closed.', true);
+    return;
+  }
 
   const form = event.target;
   const values = new FormData(form);
@@ -1773,51 +1961,64 @@ if (event.target.id === 'self-registration-form') {
   const mobile = String(values.get('mobile') || '').trim();
   const state = String(values.get('state') || '').trim();
   const district = String(values.get('district') || '').trim();
-  const game = String(values.get('game') || '').trim();
-  const institutionName =
-    String(values.get('institutionName') || '').trim();
-    const academyId = String(values.get('academyId') || '').trim();
+  const gender = String(values.get('gender') || '').toUpperCase();
+  const events = values.getAll('events');
+  const academyId = String(values.get('academyId') || '').trim();
+  const academyName = String(
+  values.get('institutionName') || ''
+).trim();
 
   if (
     !fullName ||
     !dateOfBirth ||
     dateOfBirth > new Date().toISOString().slice(0, 10) ||
-    !/^[0-9+()\-\s]{10,20}$/.test(mobile) ||
+    !/^[0-9+()\- \s]{10,20}$/.test(mobile) ||
     mobile.replace(/\D/g, '').length < 10 ||
     !state ||
     !district ||
-    !game ||
-    !institutionName ||
-    !academyId
+    !['MALE', 'FEMALE'].includes(gender) ||
+    events.length < 1 ||
+    events.length > 2 ||
+    !events.every(value =>
+  ['INDIVIDUAL', 'FIGHT'].includes(value)
+) ||
+!academyName
   ) {
     toast('Please check all registration details.', true);
     return;
   }
 
   const submitButton = form.querySelector('button[type="submit"]');
-  submitButton.disabled = true;
+  if (submitButton) submitButton.disabled = true;
 
   try {
-    const { error } = await supabaseClient
-      .from('self_registrations')
-      .insert({
-        full_name: fullName,
-        date_of_birth: dateOfBirth,
-        mobile,
-        state,
-        district,
-        game,
-        academy_id: academyId,
-        institution_name: institutionName,
-        status: 'pending'
-      });
+    const { data: result, error } = await supabaseClient.rpc(
+      'submit_vettai_registration',
+      {
+        p_full_name: fullName,
+        p_date_of_birth: dateOfBirth,
+        p_mobile: mobile,
+        p_state: state,
+        p_district: district,
+        p_gender: gender,
+        p_events: events,
+p_academy_id: academyId || null,
+p_academy_name: academyName
+      }
+    );
 
     if (error) throw error;
 
+    if (!result?.success || !result?.participant_code) {
+      throw new Error('Registration could not be completed.');
+    }
+
     form.innerHTML = `
-      <h3>Registration submitted!</h3>
-      <p>Your details have been received successfully.</p>
-      <p>Your registration is pending verification.</p>
+      <h3>Registration successful!</h3>
+      <p>Your participant details have been registered.</p>
+      <p><strong>Participant Code:</strong>
+        ${esc(result.participant_code)}</p>
+      <p>Please keep this code for reference.</p>
       <button class="btn btn-outline btn-wide" type="button"
         data-action="back-to-registration">
         Back to registration options
@@ -1826,7 +2027,7 @@ if (event.target.id === 'self-registration-form') {
   } catch (error) {
     console.error('Self-registration failed:', error);
     toast(`Registration failed: ${error.message}`, true);
-    submitButton.disabled = false;
+    if (submitButton) submitButton.disabled = false;
   }
 
   return;
@@ -1971,6 +2172,14 @@ else if (event.target.id === 'login-form') {
 
   } else if (event.target.id === 'academy-signup-form') {
     event.preventDefault();
+
+    if (!registrationEnabled) {
+  authView = 'registration';
+  render();
+  toast('Institution registration is currently closed.', true);
+  return;
+}
+
     const form = event.target;
     const values = validateAcademySignup(form);
     if (!values) return;
@@ -1992,9 +2201,16 @@ else if (event.target.id === 'login-form') {
   weight: String(form.get('weight') || '').trim(),
   events,
   category: events.length === 2 ? 'BOTH' : events[0],
-  instituteId: event.target.dataset.id
-    ? data.students.find(student => (student.dbId || student.id) === event.target.dataset.id)?.instituteId
-    : currentInstitute()?.id
+  
+instituteId: event.target.dataset.id
+  ? data.students.find(
+      student =>
+        (student.dbId || student.id) === event.target.dataset.id
+    )?.instituteId
+  : (isOrganiser()
+      ? String(form.get('instituteId') || '')
+      : currentInstitute()?.id)
+
 };
     if (
   !values.name ||

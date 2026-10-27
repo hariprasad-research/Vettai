@@ -318,3 +318,253 @@ tbody tr:hover { background: #fbfcf8; }
   font-size: 13px;
   color: #66736d;
 }
+
+/* VETTAI — Pitch Category Form Layout Fix */
+#pitch-category-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 18px 22px 0;
+  box-sizing: border-box;
+}
+
+#pitch-category-form > .field,
+#pitch-category-form > .form-row {
+  flex: 0 0 auto;
+}
+
+#pitch-category-form .form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+#pitch-category-form input,
+#pitch-category-form select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+#pitch-category-form .modal-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 14px 0 16px;
+  background: var(--paper, #fffefa);
+  border-top: 1px solid var(--line, #e0e5df);
+}
+
+@media (max-width: 520px) {
+  #pitch-category-form {
+    padding: 16px 18px 0;
+  }
+
+  #pitch-category-form .form-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  #pitch-category-form .modal-actions {
+    padding: 12px 0 14px;
+  }
+}
+
+
+
+/* =========================================
+   VETTAI — Saved Age Categories
+   Scoped styling; pitch roster unchanged
+   ========================================= */
+
+.saved-categories-panel {
+  overflow: hidden;
+  border: 1px solid #e0e8e1;
+  border-radius: 10px;
+}
+
+.saved-categories-panel .panel-header {
+  padding: 18px 20px;
+}
+
+.saved-categories-panel .panel-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 750;
+  color: #173d32;
+}
+
+.saved-categories-panel .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.saved-categories-panel table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.saved-categories-panel thead th {
+  padding: 14px 18px;
+  background: #f3f6f1;
+  color: #68766d;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 1px solid #e3e9e1;
+}
+
+.saved-categories-panel tbody td {
+  padding: 16px 18px;
+  color: #34443b;
+  font-size: 13px;
+  line-height: 1.5;
+  vertical-align: middle;
+  border-bottom: 1px solid #edf1ec;
+  transition: background-color 150ms ease;
+}
+
+.saved-categories-panel tbody tr:hover td {
+  background: #f6faf5;
+}
+
+.saved-categories-panel tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Consistent action alignment */
+.saved-categories-panel tbody td:last-child {
+  white-space: nowrap;
+}
+
+/* Edit button */
+.saved-categories-panel
+button[data-action="edit-pitch-category"] {
+  padding: 7px 12px;
+  margin-right: 5px;
+  border: 1px solid #d5e7d8;
+  border-radius: 6px;
+  background: #edf6ef;
+  color: #17634e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.saved-categories-panel
+button[data-action="edit-pitch-category"]:hover {
+  background: #e0f0e4;
+}
+
+/* Delete button */
+.saved-categories-panel
+button[data-action="delete-pitch-category"] {
+  padding: 7px 12px;
+  border: 1px solid #f0d8d4;
+  border-radius: 6px;
+  background: #fff4f2;
+  color: #a33e38;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.saved-categories-panel
+button[data-action="delete-pitch-category"]:hover {
+  background: #fde7e4;
+}
+
+/* Keyboard accessibility */
+.saved-categories-panel button:focus-visible {
+  outline: 2px solid #238365;
+  outline-offset: 2px;
+}
+
+/* Responsive table spacing */
+@media (max-width: 640px) {
+  .saved-categories-panel .panel-header {
+    padding: 15px;
+  }
+
+  .saved-categories-panel thead th {
+    padding: 12px;
+  }
+
+  .saved-categories-panel tbody td {
+    padding: 13px 12px;
+  }
+}
+
+/* Saved Age Categories collapsible header */
+.saved-categories-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 0;
+  background: #fffefa;
+  color: #173d32;
+  text-align: left;
+  cursor: pointer;
+}
+
+.saved-categories-toggle:hover {
+  background: #f6faf5;
+}
+
+.saved-categories-title {
+  display: block;
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.saved-categories-subtitle {
+  display: block;
+  margin-top: 5px;
+  color: #78847b;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.saved-categories-chevron {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #dfe7de;
+  border-radius: 8px;
+  background: #f3f7f1;
+  transition: transform 180ms ease;
+}
+
+.saved-categories-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+
+.saved-categories-toggle[aria-expanded="true"]
+.saved-categories-chevron {
+  transform: rotate(180deg);
+}
+
+.saved-categories-toggle:focus-visible {
+  outline: 2px solid #238365;
+  outline-offset: -3px;
+}
+
+#saved-categories-content[hidden] {
+  display: none !important;
+}
