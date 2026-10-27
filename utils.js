@@ -8,6 +8,24 @@ export function ageAtMatch(dob, matchDate = '2026-10-24') {
   if (event.getMonth() < birth.getMonth() || (event.getMonth() === birth.getMonth() && event.getDate() < birth.getDate())) age--;
   return age;
 }
-export function dateLabel(value) { if (!value) return '—'; return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value}T00:00:00`)); }
+
+export function dateLabel(value) {
+  if (!value) return '—';
+
+  // Handle date strings and database timestamps safely.
+  const datePart = String(value).trim().slice(0, 10);
+  const date = new Date(`${datePart}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }).format(date);
+}
 export function csvCell(value) { return `"${String(value ?? '').replace(/"/g, '""')}"`; }
 export function nextId(collection, prefix, length = 4) { const largest = collection.reduce((max, record) => Math.max(max, Number(String(record.id).replace(prefix, '')) || 0), 0); return `${prefix}${String(largest + 1).padStart(length, '0')}`; }
+

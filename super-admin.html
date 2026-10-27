@@ -1,0 +1,475 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123a31">
+  <title>VETTAI | Super Admin Portal</title>
+  <link rel="stylesheet" href="super-admin.css">
+</head>
+<body>
+
+  <!-- SUPER ADMIN LOGIN -->
+  <section id="superAdminLogin" class="admin-login">
+    <form id="superAdminLoginForm">
+      <h1>VETTAI Super Admin</h1>
+      <p>Sign in with your authorised administrator account.</p>
+
+      <label for="adminEmail">Email</label>
+      <input
+        id="adminEmail"
+        type="email"
+        autocomplete="username"
+        placeholder="Admin email"
+        required
+      >
+
+      <label for="adminPassword">Password</label>
+      <input
+        id="adminPassword"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Enter password"
+        required
+      >
+
+      <button type="submit" id="adminLoginButton">Sign In</button>
+      <p id="adminLoginError" role="alert" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- DASHBOARD: HIDDEN UNTIL AUTHORIZATION SUCCEEDS -->
+  <div class="admin-shell" id="adminDashboard" hidden>
+
+    <aside class="sidebar">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">⌁</span>
+        <span>VETTAI <small>COMPANY CONSOLE</small></span>
+      </a>
+
+      <div class="side-label">ADMINISTRATION</div>
+
+      <a class="nav active" href="#overview" data-admin-view="overview">
+        ▦ <span>Overview</span>
+      </a>
+      <a class="nav" href="#users" data-admin-view="users">
+        ♙ <span>User Manager</span>
+      </a>
+      <a class="nav" href="#registration" data-admin-view="registration">
+        ⚙ <span>Registration Access</span>
+      </a>
+      <a class="nav" href="#contact" data-admin-view="contact">
+        ☏ <span>Contact Page</span>
+      </a>
+      <a class="nav" href="#system" data-admin-view="system">
+        ◉ <span>System Status</span>
+      </a>
+
+      <div class="side-bottom">
+        <div class="security-note">
+          <span class="secure-dot"></span>
+          <div>
+            <b>Super Admin Portal</b>
+            <small>Company-level controls</small>
+          </div>
+        </div>
+        <a class="back-link" href="index.html">
+          ← Back to VETTAI Fixtures
+        </a>
+        <button id="adminLogoutButton" type="button">
+          Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">COMPANY CONTROL CENTRE</p>
+          <h1>Super Admin</h1>
+        </div>
+        <div class="top-actions">
+          <span class="preview-tag">ADMIN PORTAL</span>
+          <div class="admin-avatar" aria-label="Super Admin">SA</div>
+        </div>
+      </header>
+
+      <section class="content" id="adminContent">
+
+        <!-- OVERVIEW -->
+        <section id="overviewContent" data-view-panel="overview">
+          <div class="welcome">
+            <div>
+              <p class="eyebrow light">
+                VETTAI FIXTURES · COMPANY CONSOLE
+              </p>
+              <h2>Welcome to your control centre</h2>
+              <p>
+                Manage institution accounts, review registrations,
+                and configure public access from one place.
+              </p>
+            </div>
+            <div class="welcome-mark" aria-hidden="true">⌁</div>
+          </div>
+
+          <div class="stats">
+            <article class="stat">
+              <span>Total Users</span>
+              <div class="stat-value" id="totalUsersValue">—</div>
+              <small>Registered accounts</small>
+            </article>
+            <article class="stat">
+              <span>Institution Accounts</span>
+              <div class="stat-value" id="institutionAccountsValue">—</div>
+              <small>Institution role accounts</small>
+            </article>
+            <article class="stat">
+              <span>Organiser Accounts</span>
+              <div class="stat-value" id="organiserAccountsValue">—</div>
+              <small>Organiser role accounts</small>
+            </article>
+          </div>
+
+          <section class="panel" aria-labelledby="recentTitle">
+            <div class="panel-head">
+              <div>
+                <h2 id="recentTitle">Recent Registrations</h2>
+                <p>Recently registered accounts.</p>
+              </div>
+              <button class="btn primary" id="openManager" type="button">
+                Open User Manager ↗
+              </button>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Account details</th>
+                    <th>Role</th>
+                    <th>Registered</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="recentRows"></tbody>
+              </table>
+            </div>
+            <div class="empty-note" id="recentEmpty" hidden>
+              No accounts found.
+            </div>
+          </section>
+
+          <section class="panel" id="registrationOverview">
+            <div class="panel-head">
+              <div>
+                <h2>Registration Access</h2>
+                <p>
+                  Control whether public visitors see registration
+                  options or the contact page.
+                </p>
+              </div>
+              <span class="state-pill" id="accessState">
+                Loading setting
+              </span>
+            </div>
+
+            <div class="switch-row">
+              <div class="switch-copy">
+                <b id="switchTitle">Registration setting</b>
+                <p id="switchDescription">
+                  Current public registration status.
+                </p>
+              </div>
+              <label class="switch" aria-label="Toggle public registration">
+                <input id="registrationSwitch" type="checkbox">
+                <span></span>
+              </label>
+            </div>
+
+            <div class="preview-message" id="contactPreview" hidden>
+              <div class="message-icon" aria-hidden="true">☏</div>
+              <div>
+                <b>Contact page mode</b>
+                <p>
+                  Visitors should be shown the WhatsApp contact page.
+                </p>
+                <button class="btn outline" type="button"
+                        data-admin-view="contact">
+                  Configure contact page
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" id="contactOverview">
+            <div class="panel-head">
+              <div>
+                <h2>WhatsApp Contact Page</h2>
+                <p>Configure the public contact destination.</p>
+              </div>
+              <button class="btn outline" type="button"
+                      data-admin-view="contact">
+                Open Settings
+              </button>
+            </div>
+            <div class="switch-row">
+              <div class="switch-copy">
+                <b>Contact destination</b>
+                <p>Managed through Contact Page settings.</p>
+              </div>
+              <span class="state-pill" id="contactOverviewState">
+                Not loaded
+              </span>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>System Status</h2>
+                <p>Portal integration status.</p>
+              </div>
+            </div>
+            <div class="switch-row">
+              <div class="switch-copy">
+                <b>Admin interface</b>
+                <p>Super Admin dashboard.</p>
+              </div>
+              <span class="state-pill">Loaded</span>
+            </div>
+            <div class="switch-row">
+              <div class="switch-copy">
+                <b>Supabase connection</b>
+                <p id="supabaseStatus">Checking connection</p>
+              </div>
+              <span class="state-pill closed" id="supabaseStatusBadge">
+                Pending
+              </span>
+            </div>
+          </section>
+        </section>
+
+        <!-- USER MANAGER -->
+        <section class="panel" id="users" data-view-panel="users" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>User Manager</h2>
+              <p>Registered institution and organiser accounts.</p>
+            </div>
+            <button class="btn outline" id="backOverview" type="button">
+              ← Back to Overview
+            </button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Account details</th>
+                  <th>Role</th>
+                  <th>Registered</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="managerRows"></tbody>
+            </table>
+          </div>
+          <div class="empty-note" id="managerEmpty" hidden>
+            No accounts found.
+          </div>
+        </section>
+
+        <!-- REGISTRATION SETTINGS -->
+        <section class="panel" id="registration"
+                 data-view-panel="registration" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>Registration Access</h2>
+              <p>Manage public registration availability.</p>
+            </div>
+            <button class="btn outline" type="button"
+                    data-admin-view="overview">
+              ← Back to Overview
+            </button>
+          </div>
+
+          <div class="switch-row">
+            <div class="switch-copy">
+              <b id="registrationPageTitle">Registration setting</b>
+              <p id="registrationPageDescription">
+                Current public registration status.
+              </p>
+            </div>
+            <label class="switch"
+                   aria-label="Toggle registration from settings">
+              <input id="registrationSwitchPage" type="checkbox">
+              <span></span>
+            </label>
+          </div>
+        </section>
+
+        <!-- CONTACT PAGE SETTINGS -->
+        <section class="panel" id="contact"
+                 data-view-panel="contact" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>Contact Page Settings</h2>
+              <p>Configure the WhatsApp contact details.</p>
+            </div>
+            <button class="btn outline" type="button"
+                    data-admin-view="overview">
+              ← Back to Overview
+            </button>
+          </div>
+
+          <div class="contact-settings">
+            <div>
+              <div class="setting">
+                <label for="waNumber">WhatsApp number</label>
+                <input id="waNumber" type="tel" inputmode="tel"
+                       placeholder="919876543210" autocomplete="tel">
+                <small>Include country code, digits only.</small>
+              </div>
+
+              <div class="setting">
+                <label for="waMessage">Pre-filled message</label>
+                <textarea id="waMessage" rows="4">Hello VETTAI team, I would like to know more about VETTAI Fixtures.</textarea>
+              </div>
+
+              <button class="btn primary" id="testWhatsApp" type="button">
+                Test WhatsApp Link ↗
+              </button>
+
+              <button class="btn primary" id="saveContactSettings"
+                      type="button">
+                Save Contact Settings
+              </button>
+            </div>
+
+            <div>
+              <div class="preview-message" style="margin:0 0 14px">
+                <div class="message-icon" aria-hidden="true">☏</div>
+                <div>
+                  <b>Public contact preview</b>
+                  <p>Contact the VETTAI team.</p>
+                  <button class="btn primary" id="previewWhatsApp"
+                          type="button">
+                    Contact Us on WhatsApp ↗
+                  </button>
+                </div>
+              </div>
+
+              <div class="setting">
+                <label>Current mode</label>
+                <div class="state-pill" id="contactPageState">
+                  Not loaded
+                </div>
+                <small id="contactSaveStatus" role="status">
+                  Contact settings have not been loaded.
+                </small>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SYSTEM STATUS -->
+        <section class="panel" id="system"
+                 data-view-panel="system" hidden>
+          <div class="panel-head">
+            <div>
+              <h2>System Status</h2>
+              <p>Portal diagnostics and integration readiness.</p>
+            </div>
+            <button class="btn outline" type="button"
+                    data-admin-view="overview">
+              ← Back to Overview
+            </button>
+          </div>
+
+          <div class="switch-row">
+            <div class="switch-copy">
+              <b>Super Admin UI</b>
+              <p>Dashboard interface status.</p>
+            </div>
+            <span class="state-pill">Loaded</span>
+          </div>
+
+          <div class="switch-row">
+            <div class="switch-copy">
+              <b>Supabase connection</b>
+              <p id="systemSupabaseStatus">Checking connection.</p>
+            </div>
+            <span class="state-pill closed" id="systemSupabaseBadge">
+              Pending
+            </span>
+          </div>
+
+          <div class="switch-row">
+            <div class="switch-copy">
+              <b>Admin authorization</b>
+              <p>Must be verified by Supabase before dashboard access.</p>
+            </div>
+            <span class="state-pill closed" id="authorizationStatus">
+              Pending
+            </span>
+          </div>
+        </section>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- USER DETAILS MODAL -->
+  <div class="modal-backdrop" id="userModal" hidden>
+    <section class="modal" role="dialog" aria-modal="true"
+             aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">USER DETAILS</p>
+          <h2 id="modalTitle">Account details</h2>
+          <p>Review account information and permitted role changes.</p>
+        </div>
+        <button class="close" id="closeModal" type="button"
+                aria-label="Close">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-grid" id="userDetails"></div>
+
+        <div class="setting">
+          <label for="roleSelect">Account role</label>
+          <select id="roleSelect">
+            <option value="Institution">Institution</option>
+            <option value="Organiser">Organiser</option>
+          </select>
+          <small>
+            Role updates must be authorised by a secure backend.
+          </small>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn outline" id="cancelRole" type="button">
+          Cancel
+        </button>
+        <button class="btn primary" id="applyRole" type="button">
+          Save Role
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div class="toast" id="toast" role="status"
+       aria-live="polite" hidden></div>
+
+  <!-- LOAD DEPENDENCIES BEFORE THE MODULE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script type="module" src="super-admin.js"></script>
+
+</body>
+</html>
