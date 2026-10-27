@@ -521,10 +521,10 @@ function renderRegistrationChoice() {
             class="btn btn-primary btn-wide"
             type="button"
             data-action="self-registration"
+          ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}
           >
-            Self Registration →
-          </button>
-
+          Self Registration →
+          </button> 
           <button
             class="btn btn-outline btn-wide"
             type="button"
@@ -533,6 +533,8 @@ function renderRegistrationChoice() {
             Academy / Institution Registration →
           </button>
         </div>
+       ${!data.registrationOpen ? `<div class="note" style="margin-bottom:15px">Registration is closed. You can view existing entries, but cannot add, edit or delete participants.</div>` : ''} 
+
       </section>
     </div>
   `;
@@ -2496,7 +2498,6 @@ async function loadInstitutesFromSupabase() {
     toast(`Could not load academies: ${error.message}`, true);
   }
 }
-
 
 
 restoreAuthSession();
