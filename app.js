@@ -103,15 +103,14 @@ async function loadRegistrationStatus() {
   registrationEnabled = enabled;
 }
 
-
 async function loadAdminRegistrationStatus() {
   const { data: enabled, error } = await supabaseClient.rpc(
-    'get_registration_status'
+    'get_organiser_registration_status'
   );
 
   if (error || typeof enabled !== 'boolean') {
-    console.error('Admin registration status error:', error);
-    throw new Error('Could not load admin registration settings.');
+    console.error('Organiser registration status error:', error);
+    throw new Error('Could not load organiser registration settings.');
   }
 
   adminRegistrationEnabled = enabled;
