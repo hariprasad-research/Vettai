@@ -961,7 +961,7 @@ function renderDashboard() {
   return `${pageHeading('Institute workspace', 'ACADEMY DASHBOARD', 'Your academy details and registrations at a glance.')}
     <div class="banner"><div class="banner-copy"><span class="banner-symbol">✳</span><div><strong>${esc(institute.academyName)}</strong><small>${esc(institute.masterName)} · ${esc(institute.phone)} · ${esc(institute.email || 'Email not provided')}</small></div></div><span class="role-tag">${institute.id}</span></div>
     <section class="stat-grid">${statCard('Total participants', stats.total, 'Registered from your academy', '◉')}${statCard('Individual', stats.individual, 'Individual event', '◎')}${statCard('Fight', stats.fight, 'Fight event', '✳')}${statCard('Both events', stats.both, 'Individual + Fight', '◉')}${statCard('Total referees', instituteReferees(institute.id).length, 'Academy referees', '⌖')}</section>
-    <div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>Recent participants</h2><button class="btn btn-quiet" data-page="participants">View all →</button></div><div class="panel-body">${activityList(students.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4))}</div></section><section class="panel"><div class="panel-head"><h2>Quick actions</h2><small>Manage your entries</small></div><div class="panel-body"><div class="quick-links"><button class="quick-link" data-action="add-student" ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}><span><strong>Add a participant</strong><small>Register for the October match</small></span><span class="quick-arrow">＋</span></button><button class="quick-link" data-page="referees"><span><strong>Manage referees</strong><small>${instituteReferees(institute.id).length} referees on your roster</small></span><span class="quick-arrow">→</span></button></div>${!data.registrationOpen ? `<p class="note" style="margin:12px 0 0">Registration is closed. New registrations and edits are unavailable.</p>` : ''}</div></section></div>`;
+    <div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>Recent participants</h2><button class="btn btn-quiet" data-page="participants">View all →</button></div><div class="panel-body">${activityList(students.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4))}</div></section><section class="panel"><div class="panel-head"><h2>Quick actions</h2><small>Manage your entries</small></div><div class="panel-body"><div class="quick-links"><button class="quick-link" data-action="add-student" ${!adminRegistrationEnabled ? 'disabled title="Registration is closed"' : ''}><span><strong>Add a participant</strong><small>Register for the October match</small></span><span class="quick-arrow">＋</span></button><button class="quick-link" data-page="referees"><span><strong>Manage referees</strong><small>${instituteReferees(institute.id).length} referees on your roster</small></span><span class="quick-arrow">→</span></button></div>${!data.registrationOpen ? `<p class="note" style="margin:12px 0 0">Registration is closed. New registrations and edits are unavailable.</p>` : ''}</div></section></div>`;
 }
 function renderOrganiserDashboard() {
 
@@ -1030,7 +1030,7 @@ const addButton = `
   <button
     class="btn btn-primary"
     data-action="add-student"
-    ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}
+    ${!adminRegistrationEnabled ? 'disabled title="Registration is closed"' : ''}
   >
     ＋ Add Participant
   </button>
