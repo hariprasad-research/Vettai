@@ -526,12 +526,12 @@ function renderRegistrationChoice() {
     <h2>Choose Registration Type</h2>
     <p>Select how you want to register.</p>
 
-    ${adminRegistrationEnabled ? `
+    
       <button
         class="btn btn-primary btn-wide"
         type="button"
         data-action="self-registration"
-        ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}
+        ${!adminRegistrationEnabled ? 'disabled title="Registration is closed"' : ''}
       >
         Self Registration →
       </button>
@@ -544,15 +544,9 @@ function renderRegistrationChoice() {
       >
         Academy / Institution Registration →
       </button>
-    ` : `
-      <div class="note">
-        Registration is currently unavailable.
-        Please contact our team for assistance.
-      </div>
-      <!-- Keep your existing Contact button here -->
-    `}
+  
 
-    ${!data.registrationOpen && adminRegistrationEnabled ? `
+    ${!adminRegistrationEnabled ? `
       <div class="note" style="margin-bottom:15px">
         Registration is closed. You can view existing entries,
         but cannot add, edit or delete participants.
