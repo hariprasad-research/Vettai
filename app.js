@@ -50,6 +50,7 @@ let session = null;
 let authView = 'registration';
 let signupCreatedId = null;
 let registrationEnabled = true;
+let adminRegistrationEnabled = true;
 let activePage = 'dashboard';
 let selectedInstitute = null;
 let searchText = '';
@@ -87,18 +88,35 @@ function loadData() {
   return structuredClone(seed);
 }
 
+
+
 async function loadRegistrationStatus() {
-  const { data, error } = await supabaseClient.rpc(
+  const { data: enabled, error } = await supabaseClient.rpc(
     'get_registration_status'
   );
 
-  if (error || typeof data !== 'boolean') {
-    console.error('Registration status error:', error);
-    throw new Error('Could not load registration settings.');
+  if (error || typeof enabled !== 'boolean') {
+    console.error('Public registration status error:', error);
+    throw new Error('Could not load public registration settings.');
   }
 
-  registrationEnabled = data;
+  registrationEnabled = enabled;
 }
+
+
+async function loadAdminRegistrationStatus() {
+  const { data: enabled, error } = await supabaseClient.rpc(
+    'get_registration_status'
+  );
+
+  if (error || typeof enabled !== 'boolean') {
+    console.error('Admin registration status error:', error);
+    throw new Error('Could not load admin registration settings.');
+  }
+
+  adminRegistrationEnabled = enabled;
+}
+
 
 
 function loadSession() {
@@ -157,8 +175,9 @@ async function loadRefereesFromSupabase() {
 
 async function restoreAuthSession() {
   try {
-    // Read the admin-controlled registration setting first.
+    // Load both registration settings from Supabase.
     await loadRegistrationStatus();
+    await loadAdminRegistrationStatus();
 
     // Verify the currently authenticated Supabase user.
     const { data: authData, error: authError } =
@@ -169,10 +188,6 @@ async function restoreAuthSession() {
       render();
       return;
     }
-    console.log('AUTH RESTORE:', {
-      user: authData?.user?.id,
-      error: authError?.message
-    });
     const user = authData.user;
 
     // Always load the role from the database.
@@ -194,10 +209,6 @@ async function restoreAuthSession() {
       return;
     }
 
-    console.log('PROFILE RESTORE:', {
-      profile,
-      error: profileError?.message
-    });
 
 
     if (profile.role === 'organiser') {
@@ -225,7 +236,6 @@ async function restoreAuthSession() {
         data.students = (rows || []).map(participantFromRow);
 
         persist();
-        console.log('Participants loaded:', data.students.length);
       } catch (error) {
         console.error('Load all participants failed:', error);
         toast(`Could not load participants: ${error.message}`, true);
@@ -511,31 +521,47 @@ function renderRegistrationChoice() {
         <div class="art-foot">DISTRICT SILAMBAM MATCH · 2026</div>
       </section>
 
-      <section class="login-main">
-        <div class="login-panel">
-          <p class="eyebrow">Registration</p>
-          <h2>Choose Registration Type</h2>
-          <p>Select how you want to register.</p>
+<section class="login-main">
+  <div class="login-panel">
+    <p class="eyebrow">Registration</p>
+    <h2>Choose Registration Type</h2>
+    <p>Select how you want to register.</p>
 
-          <button
-            class="btn btn-primary btn-wide"
-            type="button"
-            data-action="self-registration"
-          ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}
-          >
-          Self Registration →
-          </button> 
-          <button
-            class="btn btn-outline btn-wide"
-            type="button"
-            data-action="academy-registration"
-          >
-            Academy / Institution Registration →
-          </button>
-        </div>
-       ${!data.registrationOpen ? `<div class="note" style="margin-bottom:15px">Registration is closed. You can view existing entries, but cannot add, edit or delete participants.</div>` : ''} 
+    ${adminRegistrationEnabled ? `
+      <button
+        class="btn btn-primary btn-wide"
+        type="button"
+        data-action="self-registration"
+        ${!data.registrationOpen ? 'disabled title="Registration is closed"' : ''}
+      >
+        Self Registration →
+      </button>
 
-      </section>
+      <button
+        class="btn btn-outline btn-wide"
+        type="button"
+        type="button"
+        data-action="academy-registration"
+      >
+        Academy / Institution Registration →
+      </button>
+    ` : `
+      <div class="note">
+        Registration is currently unavailable.
+        Please contact our team for assistance.
+      </div>
+      <!-- Keep your existing Contact button here -->
+    `}
+
+    ${!data.registrationOpen && adminRegistrationEnabled ? `
+      <div class="note" style="margin-bottom:15px">
+        Registration is closed. You can view existing entries,
+        but cannot add, edit or delete participants.
+      </div>
+    ` : ''}
+  </div>
+</section>
+
     </div>
   `;
 }
@@ -1550,12 +1576,47 @@ function login(role, instituteId = null) {
 }
 async function logout() { await signOut(supabaseClient); authView = 'login'; session = null; sessionStorage.removeItem(SESSION_KEY); activePage = 'dashboard'; history.replaceState(null, '', location.pathname + location.search); render(); }
 function closeModal() { modalState = null; renderModal(); }
-function toggleRegistration() {
-  data.registrationOpen = !data.registrationOpen;
-  persist();
-  render();
-  toast(`Registration ${data.registrationOpen ? 'reopened' : 'closed'}.`);
+
+//close registration
+
+
+
+async function toggleRegistration() {
+  const nextStatus = !data.registrationOpen;
+
+  try {
+    const { data: savedStatus, error } = await supabaseClient.rpc(
+      'set_organiser_registration_status',
+      { enabled: nextStatus }
+    );
+
+    if (error) {
+      console.error('Organiser registration update failed:', error);
+      toast(`Could not update registration: ${error.message}`, true);
+      return;
+    }
+
+    if (typeof savedStatus !== 'boolean') {
+      console.error('Unexpected registration status:', savedStatus);
+      toast('Unexpected response from Supabase.', true);
+      return;
+    }
+
+    // Update the current page using the server-confirmed value.
+    registrationEnabled = savedStatus;
+    data.registrationOpen = savedStatus;
+
+    persist();
+    render();
+
+    toast(`Registration ${savedStatus ? 'reopened' : 'closed'}.`);
+
+  } catch (error) {
+    console.error('Registration update failed:', error);
+    toast(`Could not update registration: ${error.message}`, true);
+  }
 }
+
 
 
 function generatePitches() {
@@ -1804,13 +1865,6 @@ if (action === 'self-registration') {
   return;
 }
 
-
-  // if (action === 'academy-registration') {
-  //   console.log('Academy button clicked');
-  //   authView = 'login';
-  //   render();
-  //   return;
-  // }
 
   const button = actionButton;
   if (action === 'demo-login') login(button.dataset.role, button.dataset.role === 'INSTITUTE' ? 'INS001' : null);
@@ -2480,7 +2534,6 @@ async function loadInstitutesFromSupabase() {
 
     if (error) throw error;
 
-    console.log('Academies returned:', rows?.length, rows);
 
     data.institutes = (rows || []).map(academy => ({
       id: academy.id,
@@ -2498,6 +2551,30 @@ async function loadInstitutesFromSupabase() {
     toast(`Could not load academies: ${error.message}`, true);
   }
 }
+
+
+async function refreshRegistrationStatus() {
+  try {
+    await loadRegistrationStatus();
+    await loadAdminRegistrationStatus();
+
+    if (!session && authView === 'registration') {
+      render();
+    } else if (session && isOrganiser()) {
+      render();
+    }
+  } catch (error) {
+    console.error('Registration status refresh failed:', error);
+  }
+}
+
+window.addEventListener('focus', refreshRegistrationStatus);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    refreshRegistrationStatus();
+  }
+});
 
 
 restoreAuthSession();
