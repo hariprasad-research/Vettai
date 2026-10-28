@@ -548,8 +548,8 @@ function renderRegistrationChoice() {
 
     ${!adminRegistrationEnabled ? `
       <div class="note" style="margin-bottom:15px">
-        Registration is closed. You can view existing entries,
-        but cannot add, edit or delete participants.
+        Registration is currently closed by the administration. 
+        Please check back later or contact our team for assistance.
       </div>
     ` : ''}
   </div>
@@ -779,10 +779,20 @@ function renderLogin() {
   data-action="back-to-registration">
   ← Back to Registration
 </button>
-<button class="btn btn-primary btn-wide" type="submit">Sign in <span aria-hidden="true">→</span></button><button class="btn btn-outline btn-inline" type="button" data-action="show-signup">Sign Up</button></div></form>
+<button class="btn btn-primary btn-wide" type="submit">Sign in <span aria-hidden="true">→</span></button><button class="btn btn-outline btn-inline" type="button" data-action="show-signup" ${!adminRegistrationEnabled ? 'disabled title="Registration is closed"' : ''} >Sign Up</button></div></form>
+        ${!adminRegistrationEnabled ? `
+      <div class="note" style="margin-bottom:15px">
+        New registrations are temporarily unavailable.
+        Existing users can still sign in to access their accounts.
+      </div>
+    ` : ''}
     </div></section>
+    
   </div>`;
+
 }
+
+
 
 function renderSignupSuccess() {
   return `<div class="login-shell">
